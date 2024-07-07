@@ -52,6 +52,9 @@ if ! command -v go &> /dev/null; then
     execute_with_prompt 'wget "https://golang.org/dl/go1.21.3.linux-amd64.tar.gz"'
     execute_with_prompt 'sudo tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz'
     echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
+    echo 'export GONOSUMDB="*"'
+    echo 'export GONOPROXY="*"'
+    echo 'export GOPROXY="https://goproxy.io,direct"'
     source ~/.bashrc
 else
     echo "Go is already installed. Skipping installation."
