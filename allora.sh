@@ -51,7 +51,7 @@ if ! command -v go &> /dev/null; then
     echo "Go is not installed. Installing Go..."
     execute_with_prompt 'cd $HOME'
     echo
-    execute_with_prompt 'sudo rm -rf /usr/local/go && sudo snap install go --classic"'
+    execute_with_prompt 'sudo rm -rf /usr/local/go && sudo snap install go --classic'
     echo
     echo 'export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin' >> ~/.bashrc
     echo 'export GONOSUMDB="*"'
