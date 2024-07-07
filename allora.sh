@@ -57,15 +57,11 @@ if ! command -v go &> /dev/null; then
     echo
     execute_with_prompt 'rm "go$ver.linux-amd64.tar.gz"'
     echo
-    execute_with_prompt 'echo "export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin" >> $HOME/.bash_profile'
-    echo
-    execute_with_prompt 'echo "export GONOSUMDB=\"*\"" >> $HOME/.bash_profile'
-    echo
-    execute_with_prompt 'echo "export GONOPROXY=\"*\"" >> $HOME/.bash_profile'
-    echo
-    execute_with_prompt 'echo "export GOPROXY=\"https://goproxy.io,direct\"" >> $HOME/.bash_profile'
-    echo
-    execute_with_prompt 'source $HOME/.bash_profile'
+    echo 'export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin' >> ~/.bashrc
+    echo 'export GONOSUMDB="*"'
+    echo 'export GONOPROXY="*"'
+    echo 'export GOPROXY="https://goproxy.io,direct\"'
+    echo 'source ~/.bashrc'
     echo
 else
     echo "Go is already installed. Skipping installation."
