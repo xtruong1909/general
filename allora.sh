@@ -49,17 +49,31 @@ echo
 echo "Checking if Go is installed..."
 if ! command -v go &> /dev/null; then
     echo "Go is not installed. Installing Go..."
-    execute_with_prompt 'wget "https://golang.org/dl/go1.21.3.linux-amd64.tar.gz"'
-    execute_with_prompt 'sudo tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz'
-    echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
-    echo 'export GONOSUMDB="*"'
-    echo 'export GONOPROXY="*"'
-    echo 'export GOPROXY="https://goproxy.io,direct"'
-    source ~/.bashrc
-    execute_with_prompt 'go version'
+    execute_with_prompt 'cd $HOME'
+    echo
+    execute_with_prompt 'ver="1.21.3" && wget "https://golang.org/dl/go$ver.linux-amd64.tar.gz"'
+    echo
+    execute_with_prompt 'sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"'
+    echo
+    execute_with_prompt 'rm "go$ver.linux-amd64.tar.gz"'
+    echo
+    execute_with_prompt 'echo "export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin" >> $HOME/.bash_profile'
+    echo
+    execute_with_prompt 'echo "export GONOSUMDB=\"*\"" >> $HOME/.bash_profile'
+    echo
+    execute_with_prompt 'echo "export GONOPROXY=\"*\"" >> $HOME/.bash_profile'
+    echo
+    execute_with_prompt 'echo "export GOPROXY=\"https://goproxy.io,direct\"" >> $HOME/.bash_profile'
+    echo
+    execute_with_prompt 'source $HOME/.bash_profile'
+    echo
 else
     echo "Go is already installed. Skipping installation."
 fi
+echo
+
+echo "Checking go version..."
+execute_with_prompt 'go version'
 echo
 
 echo "Installing Allorand..."
