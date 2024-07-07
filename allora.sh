@@ -14,8 +14,8 @@ echo "Updating system dependencies..."
 execute_with_prompt "sudo apt update -y && sudo apt upgrade -y"
 echo
 
-echo "Installing packages..."
-execute_with_prompt "sudo apt install ca-certificates zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev curl git wget make jq build-essential pkg-config lsb-release libssl-dev libreadline-dev libffi-dev gcc unzip lz4 python3 python3-pip -y"
+echo "Installing required packages..."
+execute_with_prompt "sudo apt install ca-certificates zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev curl git wget make jq build-essential pkg-config lsb-release libssl-dev libreadline-dev libffi-dev gcc screen unzip lz4 python3 python3-pip -y"
 echo
 
 echo "Installing Docker..."
@@ -25,7 +25,7 @@ execute_with_prompt 'sudo apt-get update'
 execute_with_prompt 'sudo apt-get install docker-ce docker-ce-cli containerd.io -y'
 echo
 
-echo "Checking docker version..."
+echo "Checking Docker version..."
 execute_with_prompt 'docker version'
 echo
 
@@ -35,7 +35,7 @@ execute_with_prompt 'sudo curl -L "https://github.com/docker/compose/releases/do
 execute_with_prompt 'sudo chmod +x /usr/local/bin/docker-compose'
 echo
 
-echo "Checking docker-compose version..."
+echo "Checking Docker Compose version..."
 execute_with_prompt 'docker-compose --version'
 echo
 
@@ -46,32 +46,33 @@ fi
 execute_with_prompt 'sudo usermod -aG docker $USER'
 echo
 
-echo "Checking if Go is installed..."
-if ! command -v go &> /dev/null; then
-    echo "Go is not installed. Installing Go..."
-    execute_with_prompt 'wget "https://golang.org/dl/go1.21.3.linux-amd64.tar.gz"'
-    execute_with_prompt 'sudo tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz'
-    echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin'
-    echo 'export GONOSUMDB="*"'
-    echo 'export GONOPROXY="*"'
-    echo 'export GOPROXY="https://goproxy.io,direct"'
-    echo 'source ~/.bashrc'
-else
-    echo "Go is already installed. Skipping installation."
-fi
+echo "Installing Go..."
+execute_with_prompt 'cd $HOME'
+ver="1.21.3" && execute_with_prompt 'wget "https://golang.org/dl/go$ver.linux-amd64.tar.gz"'
+execute_with_prompt 'sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"'
+execute_with_prompt 'rm "go$ver.linux-amd64.tar.gz"'
+execute_with_prompt 'echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> $HOME/.bash_profile'
+execute_with_prompt 'source $HOME/.bash_profile'
+echo
+
+echo "Checking Go version..."
+execute_with_prompt 'go version'
 echo
 
 echo "Installing Allorand..."
 git clone https://github.com/allora-network/allora-chain.git
-cd allora-chain && make all
+cd allora-chain && execute_with_prompt 'make all'
 echo
 
-echo "Checking allorand version..."
-allorad version
+echo "Checking Allorand version..."
+execute_with_prompt 'allorad version'
 echo
 
 echo "Importing wallet..."
-allorad keys add testkey --recover
+execute_with_prompt 'allorad keys add testkey --recover'
+echo
+
+echo "Requesting faucet to your wallet from: https://faucet.edgenet.allora.network/"
 echo
 
 echo "Installing worker node..."
@@ -79,16 +80,11 @@ git clone https://github.com/allora-network/basic-coin-prediction-node
 cd basic-coin-prediction-node
 mkdir worker-data
 mkdir head-data
-echo
-
-echo "Giving permissions..."
-sudo chmod -R 777 worker-data head-data
+execute_with_prompt 'sudo chmod -R 777 worker-data head-data'
 echo
 
 echo "Creating Head keys..."
-echo
 sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
-echo
 sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
 echo
 
@@ -231,7 +227,7 @@ networks:
 volumes:
   inference-data:
   worker-data:
-  head-data:
+  head-data
 EOF
 
 echo "docker-compose.yml file generated successfully!"
