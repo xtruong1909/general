@@ -48,20 +48,13 @@ echo
 
 echo "Checking if Go is installed..."
     echo "Go is not installed. Installing Go..."
-    execute_with_prompt 'wget "https://golang.org/dl/go1.21.3.linux-amd64.tar.gz"'
-    execute_with_prompt 'sudo tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz'
-    echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
-    echo 'export GONOSUMDB="*"'
-    echo 'export GONOPROXY="*"'
-    echo 'export GOPROXY="https://goproxy.io,direct"'
-    source ~/.bashrc
+    execute_with_prompt 'sudo snap install go --classic'
+    echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile && source ~/.profile
 echo
 
 echo "Installing Allorand..."
 git clone https://github.com/allora-network/allora-chain.git
-cd allora-chain
-git checkout v0.0.10
-make install
+cd allora-chain && git checkout v0.0.10 && make install
 echo
 
 echo "Checking allorand version..."
