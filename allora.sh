@@ -55,7 +55,7 @@ if ! command -v go &> /dev/null; then
     echo 'export GONOSUMDB="*"'
     echo 'export GONOPROXY="*"'
     echo 'export GOPROXY="https://goproxy.io,direct"'
-    echo 'source ~/.bashrc
+    echo 'source ~/.bashrc'
 else
     echo "Go is already installed. Skipping installation."
 fi
