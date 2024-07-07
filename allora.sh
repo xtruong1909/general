@@ -46,15 +46,16 @@ fi
 execute_with_prompt 'sudo usermod -aG docker $USER'
 echo
 
+echo "Checking if Go is installed..."
 if ! command -v go &> /dev/null; then
-    echo "Installing Go..."
-    execute_with_prompt 'sudo snap install go --classic'
+    echo "Go is not installed. Installing Go..."
+    execute_with_prompt 'wget "https://golang.org/dl/go1.22.5.linux-amd64.tar.gz"'
+    execute_with_prompt 'sudo tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz'
+    echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
+    source ~/.bashrc
 else
     echo "Go is already installed. Skipping installation."
 fi
-
-echo "Checking Go version..."
-execute_with_prompt 'go version'
 echo
 
 echo "Installing Allorand..."
