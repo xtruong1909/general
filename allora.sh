@@ -51,11 +51,7 @@ if ! command -v go &> /dev/null; then
     echo "Go is not installed. Installing Go..."
     execute_with_prompt 'cd $HOME'
     echo
-    execute_with_prompt 'ver="1.21.3" && wget "https://golang.org/dl/go$ver.linux-amd64.tar.gz"'
-    echo
-    execute_with_prompt 'sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"'
-    echo
-    execute_with_prompt 'rm "go$ver.linux-amd64.tar.gz"'
+    execute_with_prompt 'sudo rm -rf /usr/local/go && sudo snap install go --classic"'
     echo
     echo 'export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin' >> ~/.bashrc
     echo 'export GONOSUMDB="*"'
