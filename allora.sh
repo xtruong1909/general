@@ -49,16 +49,12 @@ echo
 echo "Checking if Go is installed..."
 if ! command -v go &> /dev/null; then
     echo "Go is not installed. Installing Go..."
-    execute_with_prompt 'cd $HOME'
-    echo
     execute_with_prompt 'sudo rm -rf /usr/local/go && sudo snap install go --classic'
-    echo
-    echo 'export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin' >> ~/.bashrc
-    echo 'export GONOSUMDB="*"'
-    echo 'export GONOPROXY="*"'
-    echo 'export GOPROXY="https://goproxy.io,direct\"'
-    echo 'source ~/.bashrc'
-    echo
+    echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> ~/.bashrc
+    echo 'export GONOSUMDB="*"' >> ~/.bashrc
+    echo 'export GONOPROXY="*"' >> ~/.bashrc
+    echo 'export GOPROXY="https://goproxy.io,direct"' >> ~/.bashrc
+    execute_with_prompt 'source ~/.bashrc'
 else
     echo "Go is already installed. Skipping installation."
 fi
@@ -74,11 +70,11 @@ cd allora-chain && make all
 echo
 
 echo "Checking allorand version..."
-allorad version
+execute_with_prompt 'allorad version'
 echo
 
 echo "Importing wallet..."
-allorad keys add testkey --recover
+execute_with_prompt 'allorad keys add testkey --recover'
 echo
 
 echo "Installing worker node..."
@@ -89,14 +85,14 @@ mkdir head-data
 echo
 
 echo "Giving permissions..."
-sudo chmod -R 777 worker-data head-data
+execute_with_prompt 'sudo chmod -R 777 worker-data head-data'
 echo
 
 echo "Creating Head keys..."
 echo
-sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
+execute_with_prompt 'sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"'
 echo
-sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
+execute_with_prompt 'sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"'
 echo
 
 echo "This is your Head ID:"
@@ -104,7 +100,7 @@ cat head-data/keys/identity
 echo
 
 if [ -f docker-compose.yml ]; then
-    rm docker-compose.yml
+    execute_with_prompt 'rm docker-compose.yml'
     echo "Removed existing docker-compose.yml file."
     echo
 fi
@@ -245,9 +241,9 @@ echo "docker-compose.yml file generated successfully!"
 echo
 
 echo "Building and starting Docker containers..."
-docker-compose build
-docker-compose up -d
+execute_with_prompt 'docker-compose build'
+execute_with_prompt 'docker-compose up -d'
 echo
 
 echo "Checking running Docker containers..."
-docker ps
+execute_with_prompt 'docker ps'
