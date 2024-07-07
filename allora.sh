@@ -65,7 +65,7 @@ echo
 
 echo "Installing Allorand..."
 git clone https://github.com/allora-network/allora-chain.git
-cd allora-chain && execute_with_prompt 'make all'
+cd allora-chain && make all
 echo
 
 echo "Checking Allorand version..."
