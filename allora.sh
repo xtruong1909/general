@@ -52,6 +52,10 @@ ver="1.21.3" && execute_with_prompt 'wget "https://golang.org/dl/go$ver.linux-am
 execute_with_prompt 'sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"'
 execute_with_prompt 'rm "go$ver.linux-amd64.tar.gz"'
 execute_with_prompt 'echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> $HOME/.bash_profile'
+execute_with_prompt 'echo "export PATH=$PATH:/usr/local/go/bin" >> $HOME/.bash_profile'
+execute_with_prompt 'echo "export GONOSUMDB=\"*\"" >> $HOME/.bash_profile'
+execute_with_prompt 'echo "export GONOPROXY=\"*\"" >> $HOME/.bash_profile'
+execute_with_prompt 'echo "export GOPROXY=\"https://goproxy.io,direct\"" >> $HOME/.bash_profile'
 execute_with_prompt 'source $HOME/.bash_profile'
 echo
 
