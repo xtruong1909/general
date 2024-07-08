@@ -10,33 +10,10 @@ execute_with_prompt() {
     fi
 }
 
-echo "Updating system dependencies..."
-execute_with_prompt "sudo apt update -y && sudo apt upgrade -y"
-echo
-
 echo "Installing packages..."
-execute_with_prompt "sudo apt install ca-certificates zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev curl git wget make jq build-essential pkg-config lsb-release libssl-dev libreadline-dev libffi-dev gcc unzip lz4 python3 python3-pip -y"
-echo
-
-echo "Installing Docker..."
-execute_with_prompt 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg'
-execute_with_prompt 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null'
-execute_with_prompt 'sudo apt-get update'
-execute_with_prompt 'sudo apt-get install docker-ce docker-ce-cli containerd.io -y'
-echo
-
-echo "Checking docker version..."
-execute_with_prompt 'docker version'
-echo
-
-echo "Installing Docker Compose..."
-VER=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
-execute_with_prompt 'sudo curl -L "https://github.com/docker/compose/releases/download/'"$VER"'/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose'
-execute_with_prompt 'sudo chmod +x /usr/local/bin/docker-compose'
-echo
-
-echo "Checking docker-compose version..."
-execute_with_prompt 'docker-compose --version'
+execute_with_prompt "sudo apt install make jq build-essential gcc python3 python3-pip docker.io docker-compose -y"
+execute_with_prompt 'sudo snap install go --classic'
+    echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile && source ~/.profile
 echo
 
 if ! grep -q '^docker:' /etc/group; then
@@ -44,12 +21,6 @@ if ! grep -q '^docker:' /etc/group; then
 fi
 
 execute_with_prompt 'sudo usermod -aG docker $USER'
-echo
-
-echo "Checking if Go is installed..."
-    echo "Go is not installed. Installing Go..."
-    execute_with_prompt 'sudo snap install go --classic'
-    echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile && source ~/.profile
 echo
 
 echo "Installing Allorand..."
