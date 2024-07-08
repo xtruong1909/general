@@ -11,12 +11,12 @@ auth_param basic realm proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 # Choose the port you want. Default: 3128.
-http_port 3128
+http_port 31288
 EOF'
 
 # Tao mat khau
-USERNAME=8888
-PASSWORD=8888
+USERNAME=airdr2024money
+PASSWORD=3trieuDolla2024
 sudo htpasswd -b -c /etc/squid/passwords $USERNAME $PASSWORD
 
 # Khoi dong lai squid
