@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Cài đặt Squid và Apache2 utils
 sudo apt install squid -y
 sudo apt-get install apache2-utils -y
-
-# Xóa tập tin cấu hình Squid cũ
 sudo rm /etc/squid/squid.conf
 
-# Tạo tập tin cấu hình Squid mới
+# Tao tap tin cau hinh Squid moi
 sudo bash -c 'cat << EOF > /etc/squid/squid.conf
 auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwords
 auth_param basic realm proxy
@@ -17,10 +14,12 @@ http_access allow authenticated
 http_port 3128
 EOF'
 
-# Tạo tệp mật khẩu và thêm người dùng
-sudo htpasswd -c /etc/squid/passwords 8888
+# Tao mat khau
+USERNAME=8888
+PASSWORD=8888
+sudo htpasswd -b -c /etc/squid/passwords $USERNAME $PASSWORD
 
-# Khởi động lại dịch vụ Squid
+# Khoi dong lai squid
 sudo systemctl restart squid.service
 
-echo "Cấu hình Squid hoàn tất."
+echo "Finish."
