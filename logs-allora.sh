@@ -27,5 +27,5 @@ echo
 
 sleep 30
 
-journalctl -u nubit -f -o cat
+journalctl -u nubit -n 10 -o cat
 echo
