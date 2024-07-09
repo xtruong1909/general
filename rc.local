@@ -1,0 +1,8 @@
+#!/bin/sh -e
+
+docker start $(docker ps -a -q --filter "name=updater-basic-eth-pred")
+docker start $(docker ps -a -q --filter "name=worker-basic-eth-pred")
+docker start $(docker ps -a -q --filter "name=head-basic-eth-pred")
+docker start $(docker ps -a -q --filter "name=inference-basic-eth-pred")
+
+exit 0
