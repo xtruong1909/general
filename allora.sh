@@ -57,6 +57,7 @@ services:
       retries: 12
     volumes:
       - ./inference-data:/app/data
+    restart: always
 
   updater:
     container_name: updater-basic-eth-pred
@@ -78,6 +79,7 @@ services:
         aliases:
           - updater
         ipv4_address: 172.22.0.5
+    restart: always
 
   worker:
     container_name: worker-basic-eth-pred
@@ -117,6 +119,7 @@ services:
         aliases:
           - worker
         ipv4_address: 172.22.0.10
+    restart: always
 
   head:
     container_name: head-basic-eth-pred
@@ -146,6 +149,7 @@ services:
         aliases:
           - head
         ipv4_address: 172.22.0.100
+    restart: always
 
 networks:
   eth-model-local:
