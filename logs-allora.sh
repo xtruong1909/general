@@ -27,4 +27,3 @@ echo
 }')
 
 echo
-echo "ALLORA WORKER NODE"
