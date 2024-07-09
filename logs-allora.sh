@@ -7,6 +7,9 @@ cleanup() {
 
 trap cleanup SIGINT
 
+echo "Nubit Node"
+journalctl -u nubit -n 6 -o cat --no-pager
+
 output=$(
 curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
@@ -36,8 +39,4 @@ echo "Allora Worker Node:"
 echo "$output"
 echo
 
-echo "Nubit Node"
-journalctl -u nubit -n 6 -o cat --no-pager
-
-echo "Exiting script..."
 exit 0
