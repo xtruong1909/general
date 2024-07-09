@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "ALLORA WORKER NODE"
+
 (curl --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
 --data '{
