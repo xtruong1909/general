@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Định nghĩa mã màu ANSI
+YELLOW='\033[1;33m'
+GREEN='\033[1;32m'
+NC='\033[0m' # No Color
+
 cleanup() {
     echo "Received Ctrl+C. Exiting gracefully..."
     exit 0
@@ -7,9 +12,11 @@ cleanup() {
 
 trap cleanup SIGINT
 
-echo "Nubit Node"
+# Hiển thị "Nubit Node" màu vàng
+echo -e "${YELLOW}Nubit Node${NC}"
 journalctl -u nubit -n 6 -o cat --no-pager
 
+# Gửi request bằng curl và lưu output vào biến
 output=$(
 curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
@@ -35,7 +42,8 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 }')
 
 echo
-echo "Allora Worker Node:"
+# Hiển thị "Allora Worker Node" màu xanh lá cây
+echo -e "${GREEN}Allora Worker Node:${NC}"
 echo "$output"
 echo
 
