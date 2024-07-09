@@ -24,3 +24,8 @@
 }')
 
 echo
+
+sleep 30
+
+journalctl -u nubit -f -o cat
+echo
