@@ -29,9 +29,6 @@ if [ -f docker-compose.yml ]; then
     echo
 fi
 
-read -p "Enter HEAD_ID: " HEAD_ID
-echo
-
 read -p "Enter WALLET_SEED_PHRASE: " WALLET_SEED_PHRASE
 echo
 
