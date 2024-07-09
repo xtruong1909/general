@@ -40,7 +40,7 @@ echo "$output"
 echo
 
 # Xem logs từ journalctl và chỉ hiển thị 10 dòng
-echo "NUBIT NODE"
+echo "Nubit Node"
 journalctl -u nubit -n 10 -o cat --no-pager
 
 # Thoát chương trình sau khi hiển thị logs và trả về trạng thái nhập lệnh
