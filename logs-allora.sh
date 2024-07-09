@@ -24,6 +24,3 @@
 }')
 
 echo
-
-journalctl -u nubit -n 30 -o cat
-echo
