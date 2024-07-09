@@ -25,6 +25,5 @@
 
 echo
 
-journalctl -u nubit -n 10 -o cat
+journalctl -u nubit -n 30 -o cat
 echo
-exec $SHELL
