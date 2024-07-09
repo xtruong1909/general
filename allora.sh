@@ -19,7 +19,8 @@ sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data:/data alloranetwork/
 echo
 
 echo "This is your Head ID:"
-cat head-data/keys/identity
+HEAD_ID=$(cat head-data/keys/identity)
+echo "$HEAD_ID"
 echo
 
 if [ -f docker-compose.yml ]; then
