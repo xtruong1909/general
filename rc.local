@@ -1,8 +1,6 @@
 #!/bin/sh -e
 
-docker start $(docker ps -a -q --filter "name=updater-basic-eth-pred")
-docker start $(docker ps -a -q --filter "name=worker-basic-eth-pred")
-docker start $(docker ps -a -q --filter "name=head-basic-eth-pred")
-docker start $(docker ps -a -q --filter "name=inference-basic-eth-pred")
-
-exit 0
+cd $HOME/allora-chain/basic-coin-prediction-node
+docker-compose build
+docker-compose down
+docker-compose up -d
