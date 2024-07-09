@@ -37,7 +37,7 @@ echo "$output"
 echo
 
 echo "Nubit Node"
-journalctl -u nubit -n 8 -o cat --no-pager
+journalctl -u nubit -n 6 -o cat --no-pager
 
 echo "Exiting script..."
 exit 0
