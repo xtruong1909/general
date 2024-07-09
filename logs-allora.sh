@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo "ALLORA WORKER NODE"
+echo
 
 (curl --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
@@ -25,6 +26,5 @@ echo "ALLORA WORKER NODE"
     }
 }')
 
-echo "ALLORA WORKER NODE"
-
 echo
+echo "ALLORA WORKER NODE"
