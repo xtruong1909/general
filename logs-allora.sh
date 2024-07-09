@@ -10,7 +10,6 @@ cleanup() {
 trap cleanup SIGINT
 
 # Gửi request bằng curl và lưu output vào biến
-echo "ALLORA WORKER NODE"
 output=$(
 curl --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
@@ -36,7 +35,7 @@ curl --location 'http://localhost:6000/api/v1/functions/execute' \
 }')
 
 # In kết quả từ request
-echo "Output:"
+echo "Allora Worker Node:"
 echo "$output"
 echo
 
