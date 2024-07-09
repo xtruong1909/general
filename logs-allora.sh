@@ -28,4 +28,5 @@ echo
 
 echo
 sleep 3
+journalctl -u nubit -n 10 -o cat
 exit 0
