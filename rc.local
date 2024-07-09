@@ -1,6 +1,0 @@
-#!/bin/sh -e
-
-cd $HOME/allora-chain/basic-coin-prediction-node
-docker-compose build
-docker-compose down
-docker-compose up -d
