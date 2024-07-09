@@ -23,4 +23,6 @@
     }
 }')
 
+echo "ALLORA WORKER NODE"
+
 echo
