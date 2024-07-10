@@ -23,7 +23,7 @@ services:
     resources:
       limits:
         cpus: '0.5'  # 50% of CPU
-        memory: 200M   # 50MB of RAM
+        memory: 200M   # 200MB of RAM
 
   updater:
     container_name: updater-basic-eth-pred
@@ -49,7 +49,7 @@ services:
     resources:
       limits:
         cpus: '0.5'  # 50% of CPU
-        memory: 200M   # 50MB of RAM
+        memory: 200M   # 200MB of RAM
 
   worker:
     container_name: worker-basic-eth-pred
@@ -85,7 +85,7 @@ services:
     resources:
       limits:
         cpus: '0.5'  # 50% of CPU
-        memory: 200M   # 50MB of RAM
+        memory: 200M   # 200MB of RAM
         
   head:
     container_name: head-basic-eth-pred
@@ -117,7 +117,7 @@ services:
     resources:
       limits:
         cpus: '0.5'  # 50% of CPU
-        memory: 200M   # 50MB of RAM
+        memory: 200M   # 200MB of RAM
 
 networks:
   eth-model-local:
