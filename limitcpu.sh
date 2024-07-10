@@ -20,15 +20,27 @@ fi
 echo "Restarting nubit service with CPU limits..."
 sudo cgexec -g cpu:cpulimit_group systemctl restart nubit
 
-# Change directory to your Docker project
-echo "Changing directory to allora-chain/basic-coin-prediction-node..."
-cd allora-chain/basic-coin-prediction-node
 
 # Build and start Docker containers with CPU limits
 echo "Building Docker containers with CPU limits..."
-sudo cgexec -g cpu:cpulimit_group docker-compose build
-echo "Stopping existing Docker containers..."
-sudo cgexec -g cpu:cpulimit_group docker-compose down
-echo "Starting Docker containers in detached mode..."
-sudo cgexec -g cpu:cpulimit_group docker-compose up -d
+sudo cgexec -g cpu:cpulimit_group systemctl restart docker.service
+echo
+
+# Rebuild Allora Worker Node
+echo "Rebuild Allora Worker Node"
+execute_with_prompt() {
+    echo "Executing: $1"
+    if eval "$1"; then
+        echo "Command executed successfully."
+    else
+        echo "Error executing command: $1"
+        exit 1
+    fi
+}
+
+echo "Rebuild docker"
+execute_with_prompt "cd $HOME/allora-chain/basic-coin-prediction-node"
+execute_with_prompt 'docker-compose build'
+execute_with_prompt 'docker-compose down'
+execute_with_prompt 'docker-compose up -d'
 echo
