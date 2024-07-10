@@ -2,12 +2,7 @@
 
 cd allora-chain/
 
-allorad keys list
-echo
-
-read -p "Paste address here: " address
-
-echo "Wallet Address"
+address=$(yes $pass | allorad keys list | grep address | awk '{print $3}')
 echo $address
 
 
