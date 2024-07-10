@@ -4,11 +4,14 @@ cd allora-chain/
 
 echo "$Pass" | allorad keys list
 
-read -p "paste address here: " address
+# Check address
+if [ -z "$address" ]; then
+  read -p "Paste address here: " address
+fi
 
-for ((i=1; i<=20; i++)); do
+for ((i=1; i<=50; i++)); do
   echo "faucet n $i..."
-  curl -sS https://faucet.edgenet.allora.network/send/edgenet/$address
+  curl -sS "https://faucet.edgenet.allora.network/send/edgenet/$address"
   sleep 5
 done
 
