@@ -20,11 +20,10 @@ services:
     volumes:
       - ./inference-data:/app/data
     restart: always
-    
-      resources:
-        limits:
-          cpus: '0.5'  # 50% of CPU
-          memory: 50M   # 50MB of RAM
+    resources:
+      limits:
+        cpus: '0.5'  # 50% of CPU
+        memory: 200M   # 50MB of RAM
 
   updater:
     container_name: updater-basic-eth-pred
@@ -47,11 +46,10 @@ services:
           - updater
         ipv4_address: 172.22.0.5
     restart: always
-    
-      resources:
-        limits:
-          cpus: '0.5'  # 50% of CPU
-          memory: 50M   # 50MB of RAM
+    resources:
+      limits:
+        cpus: '0.5'  # 50% of CPU
+        memory: 200M   # 50MB of RAM
 
   worker:
     container_name: worker-basic-eth-pred
@@ -84,12 +82,11 @@ services:
           - worker
         ipv4_address: 172.22.0.10
     restart: always
-    
-      resources:
-        limits:
-          cpus: '0.5'  # 50% of CPU
-          memory: 50M   # 50MB of RAM
-
+    resources:
+      limits:
+        cpus: '0.5'  # 50% of CPU
+        memory: 200M   # 50MB of RAM
+        
   head:
     container_name: head-basic-eth-pred
     image: alloranetwork/allora-inference-base-head:latest
@@ -117,11 +114,10 @@ services:
           - head
         ipv4_address: 172.22.0.100
     restart: always
-    
-      resources:
-        limits:
-          cpus: '0.5'  # 50% of CPU
-          memory: 50M   # 50MB of RAM
+    resources:
+      limits:
+        cpus: '0.5'  # 50% of CPU
+        memory: 200M   # 50MB of RAM
 
 networks:
   eth-model-local:
