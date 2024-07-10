@@ -1,28 +1,34 @@
 #!/bin/bash
 
-apt install cgroup-tools
-sudo cgcreate -g cpu:cpulimit_group
-sudo mkdir -p /sys/fs/cgroup/cpu
-sudo bash -c 'echo "80000" > /sys/fs/cgroup/cpu/cpu.max'
+# Check if cgroup-tools is installed; if not, install it
+if ! dpkg -s cgroup-tools &> /dev/null; then
+    echo "Installing cgroup-tools..."
+    sudo apt install -y cgroup-tools
+fi
+
+# Check if cpulimit_group already exists; if not, create it and set limits
+if [ ! -d /sys/fs/cgroup/cpu/cpulimit_group ]; then
+    echo "Creating CPU cgroup and setting limits..."
+    sudo cgcreate -g cpu:cpulimit_group
+    sudo mkdir -p /sys/fs/cgroup/cpu
+    sudo bash -c 'echo "80000" > /sys/fs/cgroup/cpu/cpu.max'
+else
+    echo "CPU cgroup 'cpulimit_group' already exists. Skipping creation."
+fi
+
+# Restart nubit service with CPU limits
+echo "Restarting nubit service with CPU limits..."
 sudo cgexec -g cpu:cpulimit_group systemctl restart nubit
 
+# Change directory to your Docker project
+echo "Changing directory to allora-chain/basic-coin-prediction-node..."
+cd allora-chain/basic-coin-prediction-node
 
-# Names of Docker containers to limit CPU
-containers=("inference-basic-eth-pred" "updater-basic-eth-pred" "worker-basic-eth-pred" "head-basic-eth-pred")
-
-# Set CPU limit for each container
-for container in "${containers[@]}"
-do
-    # Get the PID of the container
-    container_pid=$(docker inspect -f '{{.State.Pid}}' "$container")
-
-    # Set up cgroup for the container
-    sudo mkdir -p /sys/fs/cgroup/cpu/$container_pid
-    echo $container_pid > /sys/fs/cgroup/cpu/$container_pid/tasks
-
-    # Set CPU limit for the cgroup
-    echo 80000 > /sys/fs/cgroup/cpu/cpu.cfs_quota_us
-    echo 100000 > /sys/fs/cgroup/cpu/cpu.cfs_period_us
-
-    echo "Container $container CPU limited."
-done
+# Build and start Docker containers with CPU limits
+echo "Building Docker containers with CPU limits..."
+sudo cgexec -g cpu:cpulimit_group docker-compose build
+echo "Stopping existing Docker containers..."
+sudo cgexec -g cpu:cpulimit_group docker-compose down
+echo "Starting Docker containers in detached mode..."
+sudo cgexec -g cpu:cpulimit_group docker-compose up -d
+echo
