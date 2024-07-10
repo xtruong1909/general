@@ -1,8 +1,8 @@
 #!/bin/bash
 
-cd allora-chain
+cd allora-chain/
 
-echo "Pass" | allorad keys list
+echo "$Pass" | allorad keys list
 
 read -p "paste address here: " address
 
