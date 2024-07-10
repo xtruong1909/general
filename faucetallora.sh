@@ -2,7 +2,7 @@
 
 cd allora-chain/
 
-echo "$Pass" | allorad keys list
+allorad keys list
 echo
 
 read -p "Paste address here: " address
