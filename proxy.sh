@@ -14,6 +14,8 @@ http_access allow authenticated
 http_port $PORT
 EOF'
 
+sudo sed -i "s/^http_port.*/http_port $PORT/" /etc/squid/squid.conf
+
 # Tao mat khau
 sudo htpasswd -b -c /etc/squid/passwords $USER $PASS
 
