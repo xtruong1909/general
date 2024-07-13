@@ -4,10 +4,6 @@ sudo apt install squid -y
 sudo apt-get install apache2-utils -y
 sudo rm /etc/squid/squid.conf
 
-echo "PORT=$PORT"
-echo "USER=$USER"
-echo "PASS=$PASS"
-
 # Tao tap tin cau hinh Squid moi
 sudo bash -c 'cat << EOF > /etc/squid/squid.conf
 auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwords
