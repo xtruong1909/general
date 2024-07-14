@@ -26,5 +26,3 @@ sudo chsh -s /bin/bash $USERVPS
 
 
 echo "Finish"
-
-(Command: export USERVPS=hiepntnaa && export PASSVPS=HiepntNAA2024 && wget -O https://raw.githubusercontent.com/hiepntnaa/general/main/adduser.sh && chmod +x adduser.sh && ./adduser.sh && rm -rf adduser.sh)
