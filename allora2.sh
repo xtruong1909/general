@@ -54,7 +54,7 @@ services:
       eth-model-local:
         aliases:
           - inference
-        ipv4_address: 172.22.0.14
+        ipv4_address: 172.23.0.14
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/inference/ETH"]
       interval: 10s
@@ -83,7 +83,7 @@ services:
       eth-model-local:
         aliases:
           - updater
-        ipv4_address: 172.22.0.15
+        ipv4_address: 172.23.0.15
     restart: always
 
   worker:
@@ -106,8 +106,8 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9021 \
-          --boot-nodes=/ip4/172.22.0.100/tcp/9020/p2p/$HEAD_ID \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9031 \
+          --boot-nodes=/ip4/172.23.0.100/tcp/9030/p2p/$HEAD_ID \
           --topic=allora-topic-2-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
@@ -123,7 +123,7 @@ services:
       eth-model-local:
         aliases:
           - worker
-        ipv4_address: 172.22.0.20
+        ipv4_address: 172.23.0.20
     restart: always
 
   head:
@@ -143,7 +143,7 @@ services:
         fi
         allora-node --role=head --peer-db=/data/peerdb --function-db=/data/function-db  \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9020 --rest-api=:6010
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9020 --rest-api=:6020
     ports:
       - "6010:6010"
     volumes:
@@ -153,7 +153,7 @@ services:
       eth-model-local:
         aliases:
           - head
-        ipv4_address: 172.22.0.110
+        ipv4_address: 172.23.0.110
     restart: always
 
 networks:
@@ -161,7 +161,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.22.0.0/34
+        - subnet: 172.23.0.0/24
 
 volumes:
   inference-data:
