@@ -11,6 +11,13 @@ execute_with_prompt() {
 }
 
 cd allora-chain/basic-coin-prediction-node-2
+mkdir worker-data
+mkdir head-data
+echo
+
+echo "Giving permissions..."
+sudo chmod -R 777 worker-data head-data
+echo
 echo "Creating Head keys..."
 echo
 sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
