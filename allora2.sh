@@ -9,8 +9,10 @@ execute_with_prompt() {
         exit 1
     fi
 }
-
-cd worker2/
+cd allora-chain/basic-coin-prediction-node2/
+mkdir worker-data
+mkdir head-data
+echo
 echo "Creating Head keys..."
 echo
 sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
