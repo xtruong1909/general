@@ -12,6 +12,7 @@ execute_with_prompt() {
 cd allora-chain/basic-coin-prediction-node2/
 mkdir worker-data
 mkdir head-data
+sudo chmod -R 777 worker-data head-data
 echo
 echo "Creating Head keys..."
 echo
