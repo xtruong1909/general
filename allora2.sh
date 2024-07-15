@@ -10,14 +10,7 @@ execute_with_prompt() {
     fi
 }
 
-cd allora-chain/basic-coin-prediction-node-2
-mkdir worker-data
-mkdir head-data
-echo
-
-echo "Giving permissions..."
-sudo chmod -R 777 worker-data head-data
-echo
+cd worker2/
 echo "Creating Head keys..."
 echo
 sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
@@ -44,19 +37,19 @@ cat <<EOF > docker-compose.yml
 version: '3'
 services:
   inference:
-    container_name: inference-basic-eth-pred-2
+    container_name: inference-basic-eth-pred2
     build:
       context: .
     command: python -u /app/app.py
     ports:
-      - "8010:8010"
+      - "8050:8050"
     networks:
       eth-model-local:
         aliases:
           - inference
-        ipv4_address: 172.23.0.14
+        ipv4_address: 172.25.0.4
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8010/inference/ETH"]
+      test: ["CMD", "curl", "-f", "http://localhost:8050/inference/ETH"]
       interval: 10s
       timeout: 10s
       retries: 12
@@ -65,10 +58,10 @@ services:
     restart: always
 
   updater:
-    container_name: updater-basic-eth-pred-2
+    container_name: updater-basic-eth-pred2
     build: .
     environment:
-      - INFERENCE_API_ADDRESS=http://inference:8010
+      - INFERENCE_API_ADDRESS=http://inference:8050
     command: >
       sh -c "
       while true; do
@@ -83,13 +76,13 @@ services:
       eth-model-local:
         aliases:
           - updater
-        ipv4_address: 172.23.0.15
+        ipv4_address: 172.25.0.5
     restart: always
 
   worker:
-    container_name: worker-basic-eth-pred-2
+    container_name: worker-basic-eth-pred2
     environment:
-      - INFERENCE_API_ADDRESS=http://inference:8010
+      - INFERENCE_API_ADDRESS=http://inference:8050
       - HOME=/data
     build:
       context: .
@@ -106,9 +99,9 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9031 \
-          --boot-nodes=/ip4/172.23.0.100/tcp/9030/p2p/$HEAD_ID \
-          --topic=allora-topic-2-worker \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9051 \
+          --boot-nodes=/ip4/172.25.0.100/tcp/9050/p2p/$HEAD_ID \
+          --topic=allora-topic-1-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-node-rpc-address=https://allora-rpc.edgenet.allora.network/ \
@@ -123,12 +116,12 @@ services:
       eth-model-local:
         aliases:
           - worker
-        ipv4_address: 172.23.0.20
+        ipv4_address: 172.25.0.10
     restart: always
 
   head:
-    container_name: head-basic-eth-pred-2
-    image: alloranetwork/allora-inference-base-head:latest
+    container_name: head-basic-eth-pred2
+    image: alloranetwork/allora-inference-base-head2:latest
     environment:
       - HOME=/data
     entrypoint:
@@ -143,9 +136,9 @@ services:
         fi
         allora-node --role=head --peer-db=/data/peerdb --function-db=/data/function-db  \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9020 --rest-api=:6020
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9050 --rest-api=:6050
     ports:
-      - "6020:6020"
+      - "6050:6050"
     volumes:
       - ./head-data:/data
     working_dir: /data
@@ -153,7 +146,7 @@ services:
       eth-model-local:
         aliases:
           - head
-        ipv4_address: 172.23.0.110
+        ipv4_address: 172.25.0.100
     restart: always
 
 networks:
@@ -161,7 +154,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.23.0.0/24
+        - subnet: 172.25.0.0/24
 
 volumes:
   inference-data:
