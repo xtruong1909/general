@@ -54,7 +54,7 @@ services:
       eth-model-local:
         aliases:
           - inference
-        ipv4_address: 172.22.0.4
+        ipv4_address: 172.22.0.14
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/inference/ETH"]
       interval: 10s
@@ -83,7 +83,7 @@ services:
       eth-model-local:
         aliases:
           - updater
-        ipv4_address: 172.22.0.5
+        ipv4_address: 172.22.0.15
     restart: always
 
   worker:
@@ -123,7 +123,7 @@ services:
       eth-model-local:
         aliases:
           - worker
-        ipv4_address: 172.22.0.10
+        ipv4_address: 172.22.0.20
     restart: always
 
   head:
@@ -153,7 +153,7 @@ services:
       eth-model-local:
         aliases:
           - head
-        ipv4_address: 172.22.0.100
+        ipv4_address: 172.22.0.110
     restart: always
 
 networks:
@@ -161,7 +161,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.22.0.0/24
+        - subnet: 172.22.0.0/34
 
 volumes:
   inference-data:
