@@ -145,7 +145,7 @@ services:
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
           --private-key=/data/keys/priv.bin --log-level=debug --port=9020 --rest-api=:6020
     ports:
-      - "6010:6010"
+      - "6020:6020"
     volumes:
       - ./head-data:/data
     working_dir: /data
