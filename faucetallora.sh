@@ -8,7 +8,7 @@ echo $address
 
 for ((i=1; i<=30; i++)); do
   echo "faucet n $i..."
-  curl -sS "https://faucet.testnet.allora.network/send/testnet/$address"
+  curl -sS "https://faucet.testnet-1.testnet.allora.network/send/testnet/$address"
   sleep 10
 done
 
