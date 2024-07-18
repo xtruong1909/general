@@ -16,9 +16,15 @@ trap cleanup SIGINT
 echo -e "${YELLOW}Nubit Node${NC}"
 journalctl -u nubit -n 6 -o cat --no-pager
 
+# Function to extract code from JSON
+extract_code() {
+    local output="$1"
+    local code=$(echo "$output" | jq -r '.code')
+    echo "$code"
+}
+
 # Gửi request bằng curl và lưu output vào biến
-output1=$(
-curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
+output1=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
 --data '{
     "function_id": "bafybeigpiwl3o73zvvl6dxdqu7zqcub5mhg65jiky2xqb4rdhfmikswzqm",
@@ -42,10 +48,9 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 }')
 
 echo -e "${GREEN}Allora Worker-1:${NC}"
-echo "$output1"
+extract_code "$output1"
 
-output2=$(
-curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
+output2=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
 --data '{
     "function_id": "bafybeigpiwl3o73zvvl6dxdqu7zqcub5mhg65jiky2xqb4rdhfmikswzqm",
@@ -69,10 +74,9 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 }')
 
 echo -e "${GREEN}Allora Worker-2:${NC}"
-echo "$output2"
+extract_code "$output2"
 
-output7=$(
-curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
+output7=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
 --data '{
     "function_id": "bafybeigpiwl3o73zvvl6dxdqu7zqcub5mhg65jiky2xqb4rdhfmikswzqm",
@@ -96,6 +100,6 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 }')
 
 echo -e "${GREEN}Allora Worker-7:${NC}"
-echo "$output7"
+extract_code "$output7"
 
 exit 0
