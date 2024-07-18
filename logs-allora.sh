@@ -41,10 +41,8 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
     }
 }')
 
-echo
 echo -e "${GREEN}Allora Worker-1:${NC}"
 echo "$output1"
-echo
 
 output2=$(
 curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
@@ -70,10 +68,8 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
     }
 }')
 
-echo
-echo -e "${GREEN}Allora Worker-1:${NC}"
+echo -e "${GREEN}Allora Worker-2:${NC}"
 echo "$output2"
-echo
 
 output7=$(
 curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
@@ -99,9 +95,7 @@ curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
     }
 }')
 
-echo
-echo -e "${GREEN}Allora Worker-1:${NC}"
+echo -e "${GREEN}Allora Worker-7:${NC}"
 echo "$output7"
-echo
 
 exit 0
