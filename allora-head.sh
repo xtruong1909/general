@@ -101,14 +101,15 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9011 --rest-api=:6000 \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9011 \
           --boot-nodes=/ip4/172.22.0.100/tcp/9010/p2p/$HEAD_ID \
+          --topic=allora-topic-1-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-node-rpc-address=https://allora-rpc.testnet-1.testnet.allora.network/ \
-          --topic=1 --allora-chain-topic-id=1 \
-          --allora-chain-worker-mode=worker \
-          --allora-chain-initial-stake=1000
+          --allora-chain-topic-id=1 \
+          --allora-chain-initial-stake=1000 \
+          --allora-chain-worker-mode=worker
 
     volumes:
       - ./worker-data-1:/data
@@ -143,14 +144,15 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9012 --rest-api=:6000 \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9012 \
           --boot-nodes=/ip4/172.22.0.100/tcp/9010/p2p/$HEAD_ID \
+          --topic=allora-topic-2-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-node-rpc-address=https://allora-rpc.testnet-1.testnet.allora.network/ \
-          --topic=2 --allora-chain-topic-id=2 \
-          --allora-chain-worker-mode=worker \
-          --allora-chain-initial-stake=1000
+          --allora-chain-topic-id=2 \
+          --allora-chain-initial-stake=1000 \
+          --allora-chain-worker-mode=worker
 
     volumes:
       - ./worker-data-2:/data
@@ -185,14 +187,15 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9017 --rest-api=:6000 \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9017 \
           --boot-nodes=/ip4/172.22.0.100/tcp/9010/p2p/$HEAD_ID \
+          --topic=allora-topic-7-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-node-rpc-address=https://allora-rpc.testnet-1.testnet.allora.network/ \
-          --topic=7 --allora-chain-topic-id=7 \
-          --allora-chain-worker-mode=worker \
-          --allora-chain-initial-stake=1000
+          --allora-chain-topic-id=7 \
+          --allora-chain-initial-stake=1000 \
+          --allora-chain-worker-mode=worker
 
     volumes:
       - ./worker-data-7:/data
@@ -227,14 +230,15 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9020 --rest-api=:6000 \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9020 \
           --boot-nodes=/ip4/172.22.0.100/tcp/9010/p2p/$HEAD_ID \
+          --topic=allora-topic-10-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-node-rpc-address=https://allora-rpc.testnet-1.testnet.allora.network/ \
-          --topic=10 --allora-chain-topic-id=10 \
-          --allora-chain-worker-mode=worker \
-          --allora-chain-initial-stake=1000
+          --allora-chain-topic-id=10 \
+          --allora-chain-initial-stake=1000 \
+          --allora-chain-worker-mode=worker
 
     volumes:
       - ./worker-data-10:/data
@@ -269,14 +273,15 @@ services:
         fi
         allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
-          --private-key=/data/keys/priv.bin --log-level=debug --port=9021 --rest-api=:6000 \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9021 \
           --boot-nodes=/ip4/172.22.0.100/tcp/9010/p2p/$HEAD_ID \
+          --topic=allora-topic-11-worker \
           --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-node-rpc-address=https://allora-rpc.testnet-1.testnet.allora.network/ \
-          --topic=11 --allora-chain-topic-id=11 \
-          --allora-chain-worker-mode=worker \
-          --allora-chain-initial-stake=1000
+          --allora-chain-topic-id=11 \
+          --allora-chain-initial-stake=1000 \
+          --allora-chain-worker-mode=worker
 
     volumes:
       - ./worker-data-11:/data
@@ -309,10 +314,8 @@ services:
         allora-node --role=head --peer-db=/data/peerdb --function-db=/data/function-db  \
           --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
           --private-key=/data/keys/priv.bin --log-level=debug --port=9010 --rest-api=:6000 \
-          --allora-chain-key-name=testkey \
           --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
           --allora-chain-initial-stake=1000
-
     ports:
       - "6000:6000"
     volumes:
