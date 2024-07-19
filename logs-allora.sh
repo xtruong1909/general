@@ -47,8 +47,7 @@ output1=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
     }
 }')
 
-echo -e "${GREEN}Allora Worker-1:${NC}"
-extract_code "$output1"
+echo -e "${GREEN}Worker-1:${NC}" && extract_code "$output1"
 
 output2=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
@@ -73,8 +72,7 @@ output2=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
     }
 }')
 
-echo -e "${GREEN}Allora Worker-2:${NC}"
-extract_code "$output2"
+echo -e "${GREEN}Worker-2:${NC}" && extract_code "$output2"
 
 output7=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
 --header 'Content-Type: application/json' \
@@ -99,7 +97,6 @@ output7=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
     }
 }')
 
-echo -e "${GREEN}Allora Worker-7:${NC}"
-extract_code "$output7"
+echo -e "${GREEN}Worker-7:${NC}" && extract_code "$output7"
 
 exit 0
