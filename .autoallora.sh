@@ -117,3 +117,37 @@ else
     docker-compose restart worker-7
     
 fi
+
+# Run the curl command and capture the output
+response11=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
+--header 'Content-Type: application/json' \
+--data '{
+    "function_id": "bafybeigpiwl3o73zvvl6dxdqu7zqcub5mhg65jiky2xqb4rdhfmikswzqm",
+    "method": "allora-inference-function.wasm",
+    "parameters": null,
+    "topic": "11",
+    "config": {
+        "env_vars": [
+            {
+                "name": "BLS_REQUEST_PATH",
+                "value": "/api"
+            },
+            {
+                "name": "ALLORA_ARG_PARAMS",
+                "value": "ETH"
+            }
+        ],
+        "number_of_nodes": -1,
+        "timeout": 2
+    }
+}')
+
+# Check if the curl command returned a code 200
+if echo "$response11" | grep -q '"code":"200"'; then
+    echo -e "${GREEN}ALLORA WORKER NODE code 200:${NC}"
+else
+    cd allora-chain/basic-coin-prediction-node
+    docker-compose restart worker-11
+    
+fi
+
