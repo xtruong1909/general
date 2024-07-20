@@ -11,13 +11,26 @@ execute_with_prompt() {
 }
 
 cd allora-chain/basic-coin-prediction-node
-mkdir head-data worker-data-1 worker-data-2 worker-data-7
-sudo chmod -R 777 head-data worker-data-1 worker-data-2 worker-data-7
+mkdir head-data worker-data-1 worker-data-2 worker-data-7 worker-data-11
+sudo chmod -R 777 head-data worker-data-1 worker-data-2 worker-data-7 worker-data-11
 
 sudo docker run -it --entrypoint=bash -v $(pwd)/head-data:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
 sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data-1:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
 sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data-2:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
 sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data-7:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
+sudo docker run -it --entrypoint=bash -v $(pwd)/worker-data-11:/data alloranetwork/allora-inference-base:latest -c "mkdir -p /data/keys && (cd /data/keys && allora-keys)"
+
+
+
+echo "This is your Head ID:"
+HEAD_ID=$(cat head-data/keys/identity)
+echo "$HEAD_ID"
+
+if [ -f docker-compose.yml ]; then
+    rm docker-compose.yml
+    echo "Removed existing docker-compose.yml file."
+    echo
+fi
 
 echo "This is your Head ID:"
 HEAD_ID=$(cat head-data/keys/identity)
@@ -62,6 +75,7 @@ services:
           cpus: '0.050'
           memory: 50M
 
+
   updater:
     container_name: updater
     build: .
@@ -88,6 +102,7 @@ services:
         limits:
           cpus: '0.050'
           memory: 50M
+
 
   worker-1:
     container_name: worker-1
@@ -135,7 +150,8 @@ services:
       resources:
         limits:
           cpus: '0.050'
-          memory: 50M
+          memory: 30M
+
 
   worker-2:
     container_name: worker-2
@@ -183,7 +199,8 @@ services:
       resources:
         limits:
           cpus: '0.050'
-          memory: 50M
+          memory: 30M
+
 
   worker-7:
     container_name: worker-7
@@ -231,7 +248,56 @@ services:
       resources:
         limits:
           cpus: '0.050'
-          memory: 50M
+          memory: 30M
+
+
+  worker-11:
+    container_name: worker-11
+    environment:
+      - INFERENCE_API_ADDRESS=http://inference:8000
+      - HOME=/data
+    build:
+      context: .
+      dockerfile: Dockerfile_b7s
+    entrypoint:
+      - "/bin/bash"
+      - "-c"
+      - |
+        if [ ! -f /data/keys/priv.bin ]; then
+          echo "Generating new private keys..."
+          mkdir -p /data/keys
+          cd /data/keys
+          allora-keys
+        fi
+        allora-node --role=worker --peer-db=/data/peerdb --function-db=/data/function-db \
+          --runtime-path=/app/runtime --runtime-cli=bls-runtime --workspace=/data/workspace \
+          --private-key=/data/keys/priv.bin --log-level=debug --port=9021 \
+          --boot-nodes=/ip4/172.22.0.100/tcp/9010/p2p/$HEAD_ID \
+          --topic=allora-topic-11-worker \
+          --allora-chain-key-name=testkey \
+          --allora-chain-restore-mnemonic='$WALLET_SEED_PHRASE' \
+          --allora-node-rpc-address=https://allora-rpc.testnet-1.testnet.allora.network/ \
+          --allora-chain-topic-id=11 \
+          --allora-chain-initial-stake=1000 \
+          --allora-chain-worker-mode=worker
+
+    volumes:
+      - ./worker-data-11:/data
+    working_dir: /data
+    depends_on:
+      - inference
+      - head
+    networks:
+      eth-model-local:
+        aliases:
+          - worker-11
+        ipv4_address: 172.22.0.21
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.050'
+          memory: 30M
 
 
   head:
@@ -270,6 +336,7 @@ services:
         limits:
           cpus: '0.050'
           memory: 50M
+
 
 networks:
   eth-model-local:
