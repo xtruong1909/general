@@ -25,7 +25,7 @@ echo
 
 echo "Installing Allorand..."
 git clone https://github.com/allora-network/allora-chain.git
-cd allora-chain && git checkout v0.0.10 && make install
+cd allora-chain && make all
 echo
 
 echo "Checking allorand version..."
@@ -38,11 +38,4 @@ echo
 
 echo "Installing worker node..."
 git clone https://github.com/allora-network/basic-coin-prediction-node
-cd basic-coin-prediction-node
-mkdir worker-data
-mkdir head-data
-echo
 
-echo "Giving permissions..."
-sudo chmod -R 777 worker-data head-data
-echo
