@@ -72,8 +72,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.050'
-          memory: 50M
+          cpus: '0.10'
+          memory: 100M
 
 
   updater:
@@ -100,8 +100,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.050'
-          memory: 50M
+          cpus: '0.10'
+          memory: 100M
 
 
   worker-1:
