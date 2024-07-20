@@ -61,8 +61,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   updater:
     container_name: updater
@@ -88,8 +88,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   worker-1:
     container_name: worker-1
@@ -136,8 +136,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   worker-2:
     container_name: worker-2
@@ -184,8 +184,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   worker-7:
     container_name: worker-7
@@ -232,8 +232,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   worker-10:
     container_name: worker-10
@@ -280,8 +280,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   worker-11:
     container_name: worker-11
@@ -328,8 +328,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
   head:
     container_name: head
@@ -365,8 +365,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 100M
+          cpus: '0.050'
+          memory: 50M
 
 networks:
   eth-model-local:
