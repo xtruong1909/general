@@ -11,13 +11,13 @@ auth_param basic realm proxy
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 # Choose the port you want. Default: 3128.
-http_port $PORT
+http_port $PORTPROXY
 EOF'
 
-sudo sed -i "s/^http_port.*/http_port $PORT/" /etc/squid/squid.conf
+sudo sed -i "s/^http_port.*/http_port $PORTPROXY/" /etc/squid/squid.conf
 
 # Tao mat khau
-sudo htpasswd -b -c /etc/squid/passwords $USER $PASS
+sudo htpasswd -b -c /etc/squid/passwords $USERPROXY $PASSPROXY
 
 # Khoi dong lai squid
 sudo systemctl restart squid.service
