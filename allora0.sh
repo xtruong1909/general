@@ -11,6 +11,7 @@ execute_with_prompt() {
 }
 
 sudo apt install clang pkg-config libssl-dev protobuf-compiler bsdmainutils ncdu chrony liblz4-tool make jq build-essential gcc python3 python3-pip docker.io docker-compose -y
+pip install --upgrade pip setuptools
 curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash
 sudo apt-get install speedtest
 
