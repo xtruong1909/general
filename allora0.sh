@@ -10,7 +10,7 @@ execute_with_prompt() {
     fi
 }
 
-sudo apt install sudo apt install make jq build-essential gcc python3 python3-pip docker.io docker-compose -y -y
+sudo apt install make jq build-essential gcc python3 python3-pip docker.io docker-compose -y
 pip install --upgrade pip setuptools
 curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash
 sudo apt-get install speedtest
