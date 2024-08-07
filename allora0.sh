@@ -16,13 +16,6 @@ execute_with_prompt 'sudo snap install go --classic'
     echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile && source ~/.profile
 echo
 
-if ! grep -q '^docker:' /etc/group; then
-    execute_with_prompt 'sudo groupadd docker'
-fi
-
-execute_with_prompt 'sudo usermod -aG docker $USER'
-echo
-
 echo "Installing Allorand..."
 git clone https://github.com/allora-network/allora-chain.git
 cd allora-chain && make all
