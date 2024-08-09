@@ -11,9 +11,6 @@ execute_with_prompt() {
 }
 
 sudo apt install make jq build-essential gcc python3 python3-pip docker.io docker-compose -y
-pip install --upgrade pip setuptools
-curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash
-sudo apt-get install speedtest
 
 execute_with_prompt 'sudo snap install go --classic'
     echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile && source ~/.profile
@@ -21,7 +18,7 @@ echo
 
 echo "Installing Allorand..."
 git clone https://github.com/allora-network/allora-chain.git
-cd allora-chain && make all
+cd allora-chain && make build
 echo
 
 echo "Checking allorand version..."
