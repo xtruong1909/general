@@ -25,7 +25,6 @@ cd && cd basic-coin-prediction-node
 
 
 read -p "Enter WALLET_SEED_PHRASE: " WALLET_SEED_PHRASE
-read -p "Enter ALLORA_ADDRESS: " ALLORA_ADDRESS
 
 echo "Generating docker-compose.yml file..."
 cat <<EOF > docker-compose.yml
@@ -65,51 +64,46 @@ services:
   worker1:
     container_name: worker1
     image: alloranetwork/allora-offchain-node:latest
+    environment:
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"1000000","gasAdjustment":1.0,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network/","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":1,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
+      - NAME=test-worker1
+      - ENV_LOADED=true
     volumes:
-      - ./worker-data:/data1
+      - ./worker-data:/data
     depends_on:
       inference:
         condition: service_healthy
-    environment:
-      ALLORA_OFFCHAIN_NODE_CONFIG_JSON: >
-        {"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":1,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
-      ALLORA_OFFCHAIN_ACCOUNT_ADDRESS: '$ALLORA_ADDRESS'
-      NAME: test
-      ENV_LOADED: 'true'
 
   worker2:
     container_name: worker2
     image: alloranetwork/allora-offchain-node:latest
+    environment:
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"1000000","gasAdjustment":1.0,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network/","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
+      - NAME=test-worker2
+      - ENV_LOADED=true
     volumes:
-      - ./worker-data:/data2
+      - ./worker-data:/data
     depends_on:
       inference:
         condition: service_healthy
-    environment:
-      ALLORA_OFFCHAIN_NODE_CONFIG_JSON: >
-        {"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
-      ALLORA_OFFCHAIN_ACCOUNT_ADDRESS: '$ALLORA_ADDRESS'
-      NAME: test
-      ENV_LOADED: 'true'
 
   worker7:
     container_name: worker7
     image: alloranetwork/allora-offchain-node:latest
+    environment:
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"1000000","gasAdjustment":1.0,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network/","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":7,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
+      - NAME=test-worker7
+      - ENV_LOADED=true
     volumes:
-      - ./worker-data:/data7
+      - ./worker-data:/data
     depends_on:
       inference:
         condition: service_healthy
-    environment:
-      ALLORA_OFFCHAIN_NODE_CONFIG_JSON: >
-        {"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":7,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
-      ALLORA_OFFCHAIN_ACCOUNT_ADDRESS: '$ALLORA_ADDRESS'
-      NAME: test
-      ENV_LOADED: 'true'
 
 volumes:
   inference-data:
   worker-data:
+
 EOF
 
 echo "docker-compose.yml file generated successfully."
