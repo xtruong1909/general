@@ -72,9 +72,9 @@ services:
         condition: service_healthy
     environment:
       ALLORA_OFFCHAIN_NODE_CONFIG_JSON: >
-        {"wallet":{"addressKeyName":"basic-coin-prediction-offchain-node","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","addressAccountPassphrase":"secret","alloraHomeDir":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.devnet.behindthecurtain.xyz","maxRetries":1,"minDelay":1,"maxDelay":2,"submitTx":false},"worker":[{"topicId":1,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
+        {"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":1,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
       ALLORA_OFFCHAIN_ACCOUNT_ADDRESS: '$ALLORA_ADDRESS'
-      NAME: basic-coin-prediction-offchain-node
+      NAME: test
       ENV_LOADED: 'true'
 
   worker2:
@@ -87,9 +87,9 @@ services:
         condition: service_healthy
     environment:
       ALLORA_OFFCHAIN_NODE_CONFIG_JSON: >
-        {"wallet":{"addressKeyName":"basic-coin-prediction-offchain-node","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","addressAccountPassphrase":"secret","alloraHomeDir":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.devnet.behindthecurtain.xyz","maxRetries":1,"minDelay":1,"maxDelay":2,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
+        {"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
       ALLORA_OFFCHAIN_ACCOUNT_ADDRESS: '$ALLORA_ADDRESS'
-      NAME: basic-coin-prediction-offchain-node
+      NAME: test
       ENV_LOADED: 'true'
 
   worker7:
@@ -102,9 +102,9 @@ services:
         condition: service_healthy
     environment:
       ALLORA_OFFCHAIN_NODE_CONFIG_JSON: >
-        {"wallet":{"addressKeyName":"basic-coin-prediction-offchain-node","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","addressAccountPassphrase":"secret","alloraHomeDir":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.devnet.behindthecurtain.xyz","maxRetries":1,"minDelay":1,"maxDelay":2,"submitTx":false},"worker":[{"topicId":7,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
+        {"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE":"","gas":"1000000","gasAdjustment":1,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":7,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}}]}
       ALLORA_OFFCHAIN_ACCOUNT_ADDRESS: '$ALLORA_ADDRESS'
-      NAME: basic-coin-prediction-offchain-node
+      NAME: test
       ENV_LOADED: 'true'
 
 volumes:
