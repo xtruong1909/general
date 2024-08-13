@@ -33,7 +33,7 @@ services:
       - TOKEN=ETH
       - TOKEN_CG_ID=ethereum
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./truth-data:/app/data
 
