@@ -86,19 +86,6 @@ services:
       inference:
         condition: service_healthy
 
-  worker3:
-    container_name: worker3
-    image: alloranetwork/allora-offchain-node:latest
-    environment:
-      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"1000000","gasAdjustment":1.0,"nodeRpc":"https://sentries-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":1,"submitTx":false},"worker":[{"topicId":3,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":5,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}}]}
-      - NAME=test-worker1
-      - ENV_LOADED=true
-    volumes:
-      - ./worker-data:/data
-    depends_on:
-      inference:
-        condition: service_healthy
-
   worker7:
     container_name: worker7
     image: alloranetwork/allora-offchain-node:latest
