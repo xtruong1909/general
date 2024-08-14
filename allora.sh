@@ -177,5 +177,5 @@ volumes:
 
 EOF
 
-execute_with_prompt "docker-compose up -d"
+docker-compose up -d
 
