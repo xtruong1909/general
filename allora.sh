@@ -77,7 +77,7 @@ services:
     container_name: worker24h
     image: alloranetwork/allora-offchain-node:latest
     environment:
-      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":15,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":35,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":4,"inferenceEntrypointName":"api-worker-reputer","loopSeconds"40,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}},{"topicId":6,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":45,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"SOL"}}]}
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":15,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":35,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":4,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":40,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}},{"topicId":6,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":45,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"SOL"}}]}
       - NAME=test
       - ENV_LOADED=true
     volumes:
