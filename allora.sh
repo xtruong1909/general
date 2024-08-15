@@ -49,7 +49,7 @@ services:
     container_name: worker10m
     image: alloranetwork/allora-offchain-node:latest
     environment:
-      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":15,"submitTx":false},"worker":[{"topicId":1,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":20,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":3,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":30,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}},{"topicId":5,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":40,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"SOL"}}]}
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":3,"submitTx":false},"worker":[{"topicId":1,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":2,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":3,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":4,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}},{"topicId":5,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":6,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"SOL"}}]}
       - NAME=test
       - ENV_LOADED=true
     volumes:
@@ -63,7 +63,7 @@ services:
     container_name: worker20m
     image: alloranetwork/allora-offchain-node:latest
     environment:
-      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":15,"submitTx":false},"worker":[{"topicId":7,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":45,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":8,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":55,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BNB"}},{"topicId":9,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":65,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ARB"}}]}
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":5,"submitTx":false},"worker":[{"topicId":7,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":8,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":8,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":10,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BNB"}},{"topicId":9,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":12,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ARB"}}]}
       - NAME=test
       - ENV_LOADED=true
     volumes:
@@ -77,7 +77,7 @@ services:
     container_name: worker24h
     image: alloranetwork/allora-offchain-node:latest
     environment:
-      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":30,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":90,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":4,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":120,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}},{"topicId":6,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":150,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"SOL"}}]}
+      - ALLORA_OFFCHAIN_NODE_CONFIG_JSON={"wallet":{"addressKeyName":"test","addressRestoreMnemonic":"$WALLET_SEED_PHRASE","alloraHomeDir":"","gas":"5000000","gasAdjustment":1.2,"nodeRpc":"https://allora-rpc.testnet-1.testnet.allora.network","maxRetries":1,"delay":7,"submitTx":false},"worker":[{"topicId":2,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":14,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"ETH"}},{"topicId":4,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":16,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"BTC"}},{"topicId":6,"inferenceEntrypointName":"api-worker-reputer","loopSeconds":18,"parameters":{"InferenceEndpoint":"http://inference:8000/inference/{Token}","Token":"SOL"}}]}
       - NAME=test
       - ENV_LOADED=true
     volumes:
