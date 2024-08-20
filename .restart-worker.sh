@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Đặt biến cho lỗi cần kiểm tra
-ERROR_MESSAGE="error from daemon in stream: Error grabbing logs: invalid character '\\x00' looking for beginning of value"
+ERROR_MESSAGE="error from daemon in stream"
 
 # Các container và lệnh docker-compose
 CONTAINERS=("worker10m" "worker20m" "worker24h")
