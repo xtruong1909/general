@@ -15,7 +15,7 @@ for CONTAINER in "${CONTAINERS[@]}"; do
     echo "Checking logs for $CONTAINER..."
     
     # Kiểm tra log gần nhất
-    if docker logs -n 50 "$CONTAINER" 2>&1 | grep -q "$ERROR_MESSAGE"; then
+    if docker logs "$CONTAINER" 2>&1 | grep -q "$ERROR_MESSAGE"; then
         echo "Error detected in $CONTAINER logs."
         RESTART_REQUIRED=true
         break
