@@ -4,9 +4,8 @@ mkdir -p /elixir
 
 touch /elixir/validator.env
 
-echo "This is your IP:"
-IP=$(curl ifconfig.me)
-echo -e "$(printf '\033[1;92m')$IP$(printf '\033[0m')" 
+IP=$(curl -s ifconfig.me)
+echo -e "$(printf '\033[1;92m')Dia chi IP: $IP$(printf '\033[0m')" 
 
 read -p "$(printf '\033[1;92m')Nhap ten node: $(printf '\033[0m')" ELIXIR_NODE_NAME
 read -p "$(printf '\033[1;92m')Nhap dia chi vi nhan airdrop: $(printf '\033[0m')" ADDR_WALLET
