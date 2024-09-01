@@ -1,8 +1,6 @@
 #!/bin/bash
 
-mkdir -p /elixir
-
-touch /elixir/validator.env
+mkdir -p elixir && > elixir/validator.env
 
 IP=$(curl -s ifconfig.me)
 echo -e "$(printf '\033[1;92m')Dia chi IP: $IP$(printf '\033[0m')" 
@@ -13,7 +11,7 @@ read -p "$(printf '\033[1;92m')Nhap private key: $(printf '\033[0m')" PRIV_KEY
 
 echo "Da luu thong tin vao /elixir/validator.env file..."
 
-cat <<EOF > /elixir/validator.env
+cat <<EOF > elixir/validator.env
 ENV=testnet-3
 
 STRATEGY_EXECUTOR_IP_ADDRESS=$IP
@@ -23,7 +21,12 @@ SIGNER_PRIVATE_KEY=$PRIV_KEY
 
 EOF
 
-docker pull elixirprotocol/validator:v3
+if ! docker images | grep -q 'elixirprotocol/validator\s*v3'; then
+    docker pull elixirprotocol/validator:v3
+else
+    echo "Image elixirprotocol/validator:v3 da ton tai tren he thong."
+fi
+
 
 if [ $(docker ps -a -q -f name=elixir) ]; then
     docker stop elixir
@@ -31,3 +34,4 @@ if [ $(docker ps -a -q -f name=elixir) ]; then
 fi
 
 docker run -d --env-file /elixir/validator.env --name elixir --restart unless-stopped elixirprotocol/validator:v3
+docker logs elixir -f
