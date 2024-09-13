@@ -25,4 +25,3 @@ fi
 
 docker run -d --env-file elixir/validator.env --name elixir --restart unless-stopped elixirprotocol/validator:v3
 sleep 30
-docker logs elixir -f
