@@ -1,15 +1,18 @@
 #!/bin/bash
-sudo apt install openbox tightvncserver -y && vncserver
 
-# Password
+# Cài đặt Openbox và TightVNC server
+sudo apt install openbox tightvncserver -y
+
+# Tạo thư mục và thiết lập mật khẩu VNC
 mkdir -p ~/.vnc
 echo "$PASSVNCSERVER" | vncpasswd -f > ~/.vnc/passwd
 chmod 600 ~/.vnc/passwd
 
+# Dừng VNC server nếu đang chạy
 vncserver -kill :1
 
-> ~/.vnc/xstartup
-cat <<EOF >> ~/.vnc/xstartup
+# Tạo file cấu hình xstartup
+cat <<EOF > ~/.vnc/xstartup
 #!/bin/sh
 
 xrdb "$HOME/.Xresources"
@@ -20,8 +23,12 @@ xsetroot -cursor_name left_ptr &
 openbox-session &
 EOF
 
-chmod +x ~/.vnc/xstartup && vncserver :1 -geometry 1366x768 -depth 24
+chmod +x ~/.vnc/xstartup
 
+# Khởi động lại VNC server
+vncserver :1 -geometry 1366x768 -depth 24
+
+# Cài đặt Google Chrome
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-
-sudo apt install ./google-chrome-stable_current_amd64.deb -y && rm -rf google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb -y
+rm -rf google-chrome-stable_current_amd64.deb
