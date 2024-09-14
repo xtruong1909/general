@@ -3,7 +3,7 @@ sudo apt install openbox tightvncserver -y && vncserver
 
 # Password
 mkdir -p ~/.vnc
-echo -n "$PASSVNCSERVER" | vncpasswd -f > ~/.vnc/passwd
+echo "$PASSVNCSERVER" | vncpasswd -f > ~/.vnc/passwd
 chmod 600 ~/.vnc/passwd
 
 vncserver -kill :1
@@ -21,5 +21,7 @@ openbox-session &
 EOF
 
 chmod +x ~/.vnc/xstartup && vncserver :1 -geometry 1366x768 -depth 24
+
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
 sudo apt install ./google-chrome-stable_current_amd64.deb -y && rm -rf google-chrome-stable_current_amd64.deb
