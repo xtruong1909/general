@@ -23,7 +23,3 @@ EOF
 chmod +x ~/.vnc/xstartup && vncserver :1 -geometry 1366x768 -depth 24
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install ./google-chrome-stable_current_amd64.deb -y && rm -rf google-chrome-stable_current_amd64.deb
-
-sudo -i
-touch ~/.vnc.sh && echo -e '#!/bin/bash\nsu - $USERVPS -c "vncserver :1 -geometry 1366x768 -depth 24"' > ~/.vnc.sh && chmod +x ~/.vnc.sh && (crontab -l ; echo "@reboot /root/.vnc.sh") | crontab -
-
