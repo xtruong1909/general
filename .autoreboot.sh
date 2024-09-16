@@ -36,7 +36,7 @@ for ((i=0; i<check_count; i++)); do
         ((ram_check_counter++))
     fi
 
-    sleep 15  # Sleep for 15s between checks
+    sleep 90  # Sleep for 15s between checks
 done
 
 # Reboot if threshold exceeded for all checks
