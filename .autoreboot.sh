@@ -1,7 +1,7 @@
 #!/bin/bash
 
-cpu_threshold=95  # CPU usage threshold (%)
-ram_threshold=95  # RAM usage threshold (%)
+cpu_threshold=99  # CPU usage threshold (%)
+ram_threshold=99  # RAM usage threshold (%)
 check_count=5     # Number of checks
 
 # Function to check CPU usage
