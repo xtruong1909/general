@@ -12,16 +12,5 @@ SIGNER_PRIVATE_KEY=$PRIV_KEY
 
 EOF
 
-if ! docker images | grep -q 'elixirprotocol/validator\s*v3'; then
-    docker pull elixirprotocol/validator:v3
-else
-    echo "Image elixirprotocol/validator:v3 da ton tai tren he thong."
-fi
 
-
-if [ $(docker ps -a -q -f name=elixir) ]; then
-    docker rm -f elixir
-fi
-
-docker run -d --env-file elixir/validator.env --name elixir --restart unless-stopped elixirprotocol/validator:v3
-sleep 30
+docker run -d --env-file elixir/validator.env --name elixir --restart unless-stopped elixirprotocol/validator:v3-dev
