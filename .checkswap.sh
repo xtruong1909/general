@@ -9,7 +9,7 @@ if [ "$USED_SWAP" -gt 1572864 ]; then
   systemctl stop dill
   systemctl stop hemi
   
-  # Wait 60s
+  # Wait 30s
   sleep 30
   
   # Restart dill and hemi
