@@ -1,20 +1,18 @@
 #!/bin/bash
 
-# Lấy dung lượng swap đã sử dụng (chỉ lấy phần đã sử dụng và loại bỏ đơn vị)
+# Check swap used > 2GB
 USED_SWAP=$(free | grep Swap | awk '{print $3}')
-
-# Kiểm tra nếu swap sử dụng lớn hơn 2GB (2*1024*1024 KB)
 if [ "$USED_SWAP" -gt 2097152 ]; then
   echo "Swap usage is greater than 2GB. Proceeding with service restart..."
   
-  # Dừng dịch vụ dill và hemi
+  # Stop dill and hemi
   systemctl stop dill
   systemctl stop hemi
   
-  # Đợi 60 giây
+  # Wait 60s
   sleep 60
   
-  # Khởi động lại dịch vụ dill và hemi
+  # Restart dill and hemi
   systemctl restart dill
   systemctl restart hemi
   
