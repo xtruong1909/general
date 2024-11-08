@@ -26,7 +26,7 @@ EOF
 chmod +x ~/.vnc/xstartup
 
 # Khởi động lại VNC server
-vncserver :100 -geometry 1100x710 -depth 24
+vncserver :1100 -geometry 1100x710 -depth 24
 
 # Cài đặt Google Chrome
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
