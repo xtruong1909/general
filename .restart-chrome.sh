@@ -19,6 +19,4 @@ for i in {1..3}; do
     sleep 45
   fi
 done
-sleep 15
-grass &
 INNER_EOF
