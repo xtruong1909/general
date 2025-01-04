@@ -1,11 +1,4 @@
 #!/bin/bash
-
-# Cập nhật danh sách gói
-echo "Updating package list..."
-sudo apt update
-
-# Cài đặt fail2ban
-echo "Installing fail2ban..."
 sudo apt install fail2ban -y
 
 # Tạo và chỉnh sửa cấu hình jail.local
