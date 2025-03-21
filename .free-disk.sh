@@ -4,6 +4,6 @@ sudo fstrim -av
 
 sudo dd if=/dev/zero of=empty_file bs=1M status=progress
 
-sleep 30
+sleep 15
 
-rm -rf /empty_file
+rm -rf empty_file
