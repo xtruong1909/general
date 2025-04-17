@@ -193,6 +193,28 @@ else
         echo "$url"
     }
 
+    start_tunnel() {
+        if install_cloudflared; then
+            echo -e "\n${CYAN}${BOLD}[✓] Starting cloudflared tunnel...${NC}"
+            cloudflared tunnel --url http://localhost:$PORT > cloudflared_output.log 2>&1 &
+            TUNNEL_PID=$!
+            counter=0
+            MAX_WAIT=30
+            while [ $counter -lt $MAX_WAIT ]; do
+                FORWARDING_URL=$(grep -o 'https://[^ ]*\.trycloudflare.com' cloudflared_output.log | head -n1)
+                if [ -n "$FORWARDING_URL" ]; then
+                    echo -e "${GREEN}${BOLD}[✓] Cloudflared tunnel started successfully.\n${NC}"
+                    return 0
+                fi
+                sleep 1
+                counter=$((counter + 1))
+            done
+            echo -e "${RED}${BOLD}[✗] Timeout waiting for cloudflared URL.${NC}"
+            kill $TUNNEL_PID 2>/dev/null || true
+        else
+            echo -e "\n${RED}${BOLD}[✗] Failed to install cloudflared, Trying using ngrok${NC}"
+        fi
+
         if install_ngrok; then
             while true; do
                 echo -e "\n${YELLOW}${BOLD}To get your authtoken:${NC}"
@@ -247,6 +269,7 @@ else
 
         echo -e "${RED}${BOLD}[✗] Both cloudflared and ngrok failed to start the tunnel.${NC}"
         return 1
+    }
 
     start_tunnel
     if [ $? -eq 0 ]; then
