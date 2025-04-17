@@ -247,7 +247,6 @@ else
 
         echo -e "${RED}${BOLD}[✗] Both cloudflared and ngrok failed to start the tunnel.${NC}"
         return 1
-    }
 
     start_tunnel
     if [ $? -eq 0 ]; then
