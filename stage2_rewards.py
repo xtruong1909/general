@@ -68,7 +68,7 @@ def proper_id_reward_func(
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
     agent_ids = extract_xml_ids(p)
-    extracted_responses = [extract_xml_identity(r) for r in responses]
+    extracted_responses = [extract_xml_ids(r) for r in responses]
     if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
         os.makedirs(
             f"model_output_samples/multi_stage_gsm8k_samples_from_{os.getenv('HOSTNAME')}",
@@ -92,7 +92,7 @@ def correctness_reward_func(
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
     agent_answers = extract_answers(p)
-    extracted_responses = [extract_xml_identity(r) for r in responses]
+    extracted_responses = [extract_xml_ids(r) for r in responses]
     chosen_rewards = []
     for r in extracted_responses:
         cur_reward = 0
