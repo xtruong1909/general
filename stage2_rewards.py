@@ -68,7 +68,7 @@ def proper_id_reward_func(
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
     agent_ids = extract_xml_ids(p)
-    extracted_responses = [extract_xml_ids(r) for r in responses]
+    extracted_responses = [extract_xml_identity(r) for r in responses]
     if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
         os.makedirs(
             f"model_output_samples/multi_stage_gsm8k_samples_from_{os.getenv('HOSTNAME')}",
@@ -92,49 +92,33 @@ def correctness_reward_func(
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
     agent_answers = extract_answers(p)
-    extracted_responses = [extract_xml_ids(r) for r in responses]
+    extracted_responses = [extract_xml_identity(r) for r in responses]
     chosen_rewards = []
     for r in extracted_responses:
         cur_reward = 0
-
-    # Nếu r là danh sách, lấy phần tử đầu tiên để so sánh
-    if isinstance(r, list):
-        r = r[0]  # Chỉ sử dụng phần tử đầu tiên trong danh sách (nếu có)
-
-    if r in agent_answers:
-        if stage1_rewards.extract_xml_answer(agent_answers[r]) == answer[0]:
-            cur_reward += 1.0
-        if stage1_rewards.extract_xml_answer(agent_answers[r]).isdigit():
-            cur_reward += 0.5
-        pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
-        if re.match(pattern, agent_answers[r]):
-            cur_reward += 0.5
-        pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
-        if re.match(pattern, agent_answers[r]):
-            cur_reward += 0.5
-        cur_reward += stage1_rewards.count_xml(agent_answers[r])
-    elif r in [
-        "None",
-        "No one",
-        "All answers are wrong",
-        "All answers were wrong",
-        "All are wrong",
-        "All were wrong",
-        "None are correct",
-        "None were correct",
-        "No one is correct",
-    ]:
-        agent_as = [
-            stage1_rewards.extract_xml_answer(agent_answers[id])
-            for id in agent_answers
-        ]
-        check_submissions = [
-            True if r == a else False for r, a in zip(agent_as, answer)
-        ]
-        if all(check_submissions):
-            cur_reward += 10
-    chosen_rewards += [cur_reward]
-    
+        if r in agent_answers:
+            if stage1_rewards.extract_xml_answer(agent_answers[r]) == answer[0]:
+                cur_reward += 1.0
+            if stage1_rewards.extract_xml_answer(agent_answers[r]).isdigit():
+                cur_reward += 0.5
+            pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
+            if re.match(pattern, agent_answers[r]):
+                cur_reward += 0.5
+            pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
+            if re.match(pattern, agent_answers[r]):
+                cur_reward += 0.5
+            cur_reward += stage1_rewards.count_xml(agent_answers[r])
+        elif r in [
+            "None",
+            "No one",
+            "All answers are wrong",
+            "All answers were wrong",
+            "All are wrong",
+            "All were wrong",
+            "None are correct",
+            "None were correct",
+            "No one is correct",
+        ]:
             agent_as = [
                 stage1_rewards.extract_xml_answer(agent_answers[id])
                 for id in agent_answers
