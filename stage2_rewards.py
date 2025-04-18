@@ -96,8 +96,7 @@ def correctness_reward_func(
     chosen_rewards = []
     for r in extracted_responses:
         cur_reward = 0
-        for r in extracted_responses:
-    cur_reward = 0
+
     # Nếu r là danh sách, lấy phần tử đầu tiên để so sánh
     if isinstance(r, list):
         r = r[0]  # Chỉ sử dụng phần tử đầu tiên trong danh sách (nếu có)
