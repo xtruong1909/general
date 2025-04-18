@@ -135,8 +135,7 @@ def correctness_reward_func(
         if all(check_submissions):
             cur_reward += 10
     chosen_rewards += [cur_reward]
-
-        ]:
+    
             agent_as = [
                 stage1_rewards.extract_xml_answer(agent_answers[id])
                 for id in agent_answers
