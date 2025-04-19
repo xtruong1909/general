@@ -9,6 +9,11 @@ commands=(
   "opengradient infer -m QmRhcpDXfYCKsimTmJYrAVM4Bbvck59Zb2onj3MHv9Kw5N --input '{\"open_high_low_close\":[[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]}'"
 )
 
+# Sleep ngẫu nhiên từ 10 đến 60 giây
+sleep_time=$((RANDOM % 51 + 10))
+echo "⏳ Sleeping for $sleep_time seconds before running command..."
+sleep $sleep_time
+
 # Chọn ngẫu nhiên 1 lệnh
 index=$((RANDOM % 3))
 
