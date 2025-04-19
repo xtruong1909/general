@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Di chuyển đến thư mục dự án
+# Di chuyen den thu muc du an
 cd opengradient || exit
 
-# Kích hoạt môi trường ảo
-source .venv/bin/activate  # <-- sửa từ 'active' thành 'activate'
+# Kich hoat moi truong ao
+source .venv/bin/activate
 
-# Danh sách lệnh
+# Danh sach lenh
 commands=(
   "opengradient infer -m QmbUqS93oc4JTLMHwpVxsE39mhNxy6hpf6Py3r9oANr8aZ --input '{\"num_input1\":[1.0, 2.0, 3.0], \"num_input2\":10, \"str_input1\":[\"hello\", \"ONNX\"], \"str_input2\":\" world\"}'"
 
@@ -15,15 +15,15 @@ commands=(
   "opengradient infer -m QmRhcpDXfYCKsimTmJYrAVM4Bbvck59Zb2onj3MHv9Kw5N --input '{\"open_high_low_close\":[[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]}'"
 )
 
-# Random sleep từ 10 đến 60 giây
+# Random sleep 10s - 60s
 sleep_time=$((RANDOM % 51 + 10))
 echo "⏳ Sleeping for $sleep_time seconds before running command..."
 sleep "$sleep_time"
 
-# Chọn ngẫu nhiên một lệnh để chạy
+# Chon ngau nhien lenh chay
 index=$((RANDOM % ${#commands[@]}))
 
-# In và chạy lệnh
+# Chay lenh
 echo "▶ Running command #$((index + 1)):"
 echo "${commands[$index]}"
 eval "${commands[$index]}"
