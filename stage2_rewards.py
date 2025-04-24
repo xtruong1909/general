@@ -14,8 +14,8 @@ def extract_xml_identity(text: str) -> str:
     return id.strip()
 
 
-def extract_xml_ids(text: str) -> list[str]:
-    if not text:
+def extract_xml_ids(text: str) -> str:
+    if not isinstance(text, str):
         return []
     ids = []
     ids_raw = text.split("<student>")[1:]
@@ -30,8 +30,8 @@ def extract_original_question(text: str) -> str:
     return q
 
 
-def extract_answers(text: str) -> dict:
-    if text is None:
+def extract_answers(text: str) -> str:
+    if not isinstance(text, str):
         return {}
     answers = {}
     raw = text.split("<student>")[1:]
@@ -45,19 +45,19 @@ def extract_answers(text: str) -> dict:
 def count_xml(text) -> float:
     count = 0.0
     if text.count("<compare>\n") == 1:
-        count += 0.125
+        count += 0.25
     if text.count("\n</compare>\n") == 1:
-        count += 0.125
+        count += 0.25
     if text.count("<explain>\n") == 1:
-        count += 0.125
+        count += 0.25
     if text.count("\n</explain>\n") == 1:
-        count += 0.125
+        count += 0.25
     if text.count("\n<identify>\n") == 1:
-        count += 0.125
-        count -= len(text.split("\n</identify>\n")[-1]) * 0.001
+        count += 0.25
+        count -= len(text.split("\n</identify>\n")[-1]) * 0.00001
     if text.count("\n</identify>") == 1:
-        count += 0.125
-        count -= (len(text.split("\n</identify>")[-1]) - 1) * 0.001
+        count += 0.25
+        count -= (len(text.split("\n</identify>")[-1]) - 1) * 0.00001
     return count
 
 
@@ -83,7 +83,7 @@ def proper_id_reward_func(
             f.write("-" * 20)
             out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nValid IDs:\n{agent_ids}\n\nExtracted:\n{extracted_responses[0]}\n\nGot reward? {extracted_responses[0] in agent_ids}"
             f.write(out_line)
-    return [1.0 * weighting if r in agent_ids else 0.0 for r in extracted_responses]
+    return [1.5 * weighting if r in agent_ids else 0.5 for r in extracted_responses]
 
 
 def correctness_reward_func(
@@ -98,15 +98,15 @@ def correctness_reward_func(
         cur_reward = 0
         if r in agent_answers:
             if stage1_rewards.extract_xml_answer(agent_answers[r]) == answer[0]:
-                cur_reward += 1.0
+                cur_reward += 1.5
             if stage1_rewards.extract_xml_answer(agent_answers[r]).isdigit():
-                cur_reward += 0.5
+                cur_reward += 1
             pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
             if re.match(pattern, agent_answers[r]):
-                cur_reward += 0.5
+                cur_reward += 1
             pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
             if re.match(pattern, agent_answers[r]):
-                cur_reward += 0.5
+                cur_reward += 1
             cur_reward += stage1_rewards.count_xml(agent_answers[r])
         elif r in [
             "None",
@@ -127,7 +127,7 @@ def correctness_reward_func(
                 True if r == a else False for r, a in zip(agent_as, answer)
             ]
             if all(check_submissions):
-                cur_reward += 10
+                cur_reward += 15
         chosen_rewards += [cur_reward]
     if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
         if extracted_responses[0] in agent_answers:
@@ -168,7 +168,7 @@ def strict_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [1.5 * weighting if match else 0.5 for match in matches]
 
 
 def soft_format_reward_func(
@@ -194,7 +194,7 @@ def soft_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [1.5 * weighting if match else 0.5 for match in matches]
 
 
 def xmlcount_reward_func(
