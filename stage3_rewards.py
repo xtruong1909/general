@@ -67,26 +67,26 @@ def extract_answers(text: str) -> str:
 def count_xml(text) -> float:
     count = 0.0
     if text.count("<summarize_feedback>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("\n</summarize_feedback>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("<majority>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("\n</majority>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("<question>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("\n</question>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("<think>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("\n</think>\n") == 1:
-        count += 0.25
+        count += 2
     if text.count("\n<answer>\n") == 1:
-        count += 0.25
+        count += 2
         count -= len(text.split("\n</answer>\n")[-1]) * 0.001
     if text.count("\n</answer>") == 1:
-        count += 0.25
+        count += 2
         count -= (len(text.split("\n</answer>")[-1]) - 1) * 0.001
     return count
 
@@ -132,7 +132,7 @@ def consensus_reward_func(
             out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nCritic Choice Distribution:\n{critic_choices}\n\nExtracted:\n{extracted_responses[0]}\n\nGot reward? {extracted_responses[0] in majority_choices}"
             f.write(out_line)
     return [
-        1.5 * weighting if r in majority_choices else 0.5 for r in extracted_responses
+        1.0 * weighting if r in majority_choices else 0.0 for r in extracted_responses
     ]
 
 
@@ -177,15 +177,15 @@ def concensus_correctness_reward_func(
         if r in agent_answers:
              # Compare only when there is a correct answer
             if correct_answer is not None and stage1_rewards.extract_xml_answer(agent_answers[r]) == correct_answer:
-                cur_reward += 1.5
+                cur_reward += 1.0
             if stage1_rewards.extract_xml_answer(agent_answers[r]).isdigit():
-                cur_reward += 1
+                cur_reward += 0.5
             pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
             if re.match(pattern, agent_answers[r]):
-                cur_reward += 1
+                cur_reward += 0.5
             pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
             if re.match(pattern, agent_answers[r]):
-                cur_reward += 1
+                cur_reward += 0.5
             cur_reward += stage1_rewards.count_xml(agent_answers[r])
         elif r in [
             "None",
@@ -208,7 +208,7 @@ def concensus_correctness_reward_func(
                     True if r == a else False for r, a in zip(agent_as, answer)
                 ]
                 if all(check_submissions):
-                    cur_reward += 15
+                    cur_reward += 10
         chosen_rewards += [cur_reward]
     if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
         if extracted_responses[0] in agent_answers:
@@ -252,12 +252,12 @@ def final_correctness_reward_func(
             out_line = f"Prompt:\n{p}\n\nAnswer:\n{answer[0]}\n\nResponse:\n{responses[0]}\n\nExtracted:\n{extracted_responses[0]}"
             f.write(out_line)
     return [
-        1.5 * weighting if r == a else 0.5 for r, a in zip(extracted_responses, answer)
+        1.0 * weighting if r == a else 0.0 for r, a in zip(extracted_responses, answer)
     ]
 
 
 def strict_format_reward_func(
-    completions, weighting=0.5, logging=False, **kwargs
+    completions, weighting=2.5, logging=False, **kwargs
 ) -> list[float]:
     """Reward function that checks if the completion has a specific format."""
     pattern = r"^<summarize_feedback>\n.*?\n</summarize_feedback>\n<majority>\n.*?\n</majority>\n<question>\n.*?\n</question>\n<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
@@ -277,11 +277,11 @@ def strict_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.5 * weighting if match else 0.5 for match in matches]
+    return [1.0 * weighting if match else 0.0 for match in matches]
 
 
 def soft_format_reward_func(
-    completions, weighting=0.5, logging=False, **kwargs
+    completions, weighting=2.5, logging=False, **kwargs
 ) -> list[float]:
     """Reward function that checks if the completion has a specific format."""
     pattern = r"<summarize_feedback>.*?</summarize_feedback>\s*<majority>.*?</majority>\s*<question>.*?</question>\s*<think>.*?</think>\s*<answer>.*?</answer>"
@@ -301,11 +301,11 @@ def soft_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.5 * weighting if match else 0.5 for match in matches]
+    return [1.0 * weighting if match else 0.0 for match in matches]
 
 
 def xmlcount_reward_func(
-    completions, weighting=1.0, logging=False, **kwargs
+    completions, weighting=5.0, logging=False, **kwargs
 ) -> list[float]:
     contents = [completion[0]["content"] for completion in completions]
     if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
@@ -337,52 +337,71 @@ def hivemind_cumulative_reward(
     **kwargs,
 ) -> list[float]:
     """
-    Dummy reward function that accumulates all rewards into one + saves JSON to node.outputs
+    Reward function tổng hợp + luôn xuất bản node.outputs & node.rewards ngay lập tức.
+    Chọn theo output_signal_selector: 'max', 'mean', hoặc mặc định (publish tất cả).
     """
-    consensus_reward = consensus_reward_func(prompts, completions, logging=logging)
-    concensus_correctness = concensus_correctness_reward_func(
-        prompts, completions, answer, logging=logging
-    )
-    question_recreation_reward = question_recreation_reward_func(
-        prompts, completions, logging=logging
-    )
-    final_correctness = final_correctness_reward_func(
-        prompts, completions, answer, logging=logging
-    )
-    strict_format_reward = strict_format_reward_func(completions, logging=logging)
-    soft_format_reward = soft_format_reward_func(completions, logging=logging)
-    xmlcount_reward = xmlcount_reward_func(completions, logging=logging)
+    # 1) Tính các sub-reward
+    consensus_reward            = consensus_reward_func(prompts, completions, logging=logging)
+    concensus_correctness       = concensus_correctness_reward_func(prompts, completions, answer, logging=logging)
+    question_recreation_reward  = question_recreation_reward_func(prompts, completions, logging=logging)
+    final_correctness           = final_correctness_reward_func(prompts, completions, answer, logging=logging)
+    strict_fmt                  = strict_format_reward_func(completions, logging=logging)
+    soft_fmt                    = soft_format_reward_func(completions, logging=logging)
+    xmlcount                    = xmlcount_reward_func(completions, logging=logging)
+
+    # 2) Tổng hợp thành total_reward
     total_reward = [
-        sum(tup)
-        for tup in zip(
+        sum(vals) for vals in zip(
             consensus_reward,
             concensus_correctness,
             question_recreation_reward,
             final_correctness,
-            strict_format_reward,
-            soft_format_reward,
-            xmlcount_reward,
+            strict_fmt,
+            soft_fmt,
+            xmlcount,
         )
     ]
 
-    prompt = prompts[0][-1]["content"]
-    question = extract_original_question(prompt)
+    # 3) Chuẩn bị dữ liệu chung
+    responses   = [c[0]["content"] for c in completions]
+    prompt_text = prompts[0][-1]["content"]
+    question    = extract_original_question(prompt_text)
+
+    # 4) Chọn output_data theo selector
     if output_signal_selector == "max":
-        # Generate output line
-        maximal_reward_idx, responses = (
-            np.argmax(total_reward),
-            [completion[0]["content"] for completion in completions],
-        )
+        idx    = int(np.argmax(total_reward))
+        chosen = responses[idx]
         output_data = {
-            "question": question,
-            # Safely obtain answers, use default values if answer is empty or None
-            "answer": answer[0] if answer and len(answer) > 0 else "Unknown",
-            "stage3_prompt": prompt,
-            "final_agent_decision": {node.key: responses[maximal_reward_idx]},
+            "question":              question,
+            "answer":                answer[0] if answer and len(answer) > 0 else "Unknown",
+            "stage3_prompt":         prompt_text,
+            "final_agent_decision":  {node.key: chosen},
         }
 
-    if output_signal_selector != None:
-        node.outputs = output_data
-        node.rewards = total_reward
+    elif output_signal_selector == "mean":
+        mean_val = sum(total_reward) / len(total_reward)
+        idx      = min(range(len(total_reward)),
+                       key=lambda i: abs(total_reward[i] - mean_val))
+        chosen   = responses[idx]
+        output_data = {
+            "question":              question,
+            "answer":                answer[0] if answer and len(answer) > 0 else "Unknown",
+            "stage3_prompt":         prompt_text,
+            "final_agent_decision":  {node.key: chosen},
+        }
 
+    else:
+        # default: publish tất cả responses
+        output_data = {
+            "question":              question,
+            "answer":                answer[0] if answer and len(answer) > 0 else "Unknown",
+            "stage3_prompt":         prompt_text,
+            "final_agent_decision":  {node.key: responses},
+        }
+
+    # 5) Luôn publish ngay
+    node.outputs = output_data
+    node.rewards = total_reward
+
+    # 6) Trả về zeros (node.rewards đã được dùng để publish)
     return [0.0 for _ in total_reward]
