@@ -9,7 +9,6 @@ commands=(
   "opengradient completion --model \"SentientAGI/Dobby-Mini-Unhinged-Llama-3.1-8B\" --prompt \"\$(shuf -n 1 /root/opengradient/question.sh)\" --max-tokens 50"
   "opengradient completion --model \"Qwen/Qwen2.5-72B-Instruct\" --prompt \"\$(shuf -n 1 /root/opengradient/question.sh)\" --max-tokens 50"
   "opengradient completion --model \"meta-llama/Llama-3.2-3B-Instruct\" --prompt \"\$(shuf -n 1 /root/opengradient/question.sh)\" --max-tokens 50"
-
 )
 
 # Ngủ ngẫu nhiên 10s-60s
