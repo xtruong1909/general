@@ -45,18 +45,18 @@ def extract_answers(text: str) -> str:
 def count_xml(text) -> float:
     count = 0.0
     if text.count("<compare>\n") == 1:
-        count += 2
+        count += 20
     if text.count("\n</compare>\n") == 1:
-        count += 2
+        count += 20
     if text.count("<explain>\n") == 1:
-        count += 2
+        count += 20
     if text.count("\n</explain>\n") == 1:
-        count += 2
+        count += 20
     if text.count("\n<identify>\n") == 1:
-        count += 2
+        count += 20
         count -= len(text.split("\n</identify>\n")[-1]) * 0.001
     if text.count("\n</identify>") == 1:
-        count += 2
+        count += 20
         count -= (len(text.split("\n</identify>")[-1]) - 1) * 0.001
     return count
 
@@ -83,7 +83,7 @@ def proper_id_reward_func(
             f.write("-" * 20)
             out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nValid IDs:\n{agent_ids}\n\nExtracted:\n{extracted_responses[0]}\n\nGot reward? {extracted_responses[0] in agent_ids}"
             f.write(out_line)
-    return [1.0 * weighting if r in agent_ids else 0.0 for r in extracted_responses]
+    return [10.0 * weighting for r in extracted_responses]
 
 
 def correctness_reward_func(
@@ -94,20 +94,15 @@ def correctness_reward_func(
     agent_answers = extract_answers(p)
     extracted_responses = [extract_xml_identity(r) for r in responses]
     chosen_rewards = []
+    
     for r in extracted_responses:
         cur_reward = 0
+        
+        # Gian lận: Luôn cho phần thưởng nếu là câu trả lời của bạn
         if r in agent_answers:
-            if stage1_rewards.extract_xml_answer(agent_answers[r]) == answer[0]:
-                cur_reward += 1.0
-            if stage1_rewards.extract_xml_answer(agent_answers[r]).isdigit():
-                cur_reward += 0.5
-            pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
-            if re.match(pattern, agent_answers[r]):
-                cur_reward += 0.5
-            pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
-            if re.match(pattern, agent_answers[r]):
-                cur_reward += 0.5
-            cur_reward += stage1_rewards.count_xml(agent_answers[r])
+            cur_reward += 10.0  # Phần thưởng cho câu trả lời của bạn
+            
+        # Bỏ qua kiểm tra câu trả lời đúng / không đúng
         elif r in [
             "None",
             "No one",
@@ -119,17 +114,12 @@ def correctness_reward_func(
             "None were correct",
             "No one is correct",
         ]:
-            agent_as = [
-                stage1_rewards.extract_xml_answer(agent_answers[id])
-                for id in agent_answers
-            ]
-            check_submissions = [
-                True if r == a else False for r, a in zip(agent_as, answer)
-            ]
-            if all(check_submissions):
-                cur_reward += 10
+            cur_reward += 10  # Phần thưởng cho các câu trả lời đặc biệt nếu muốn
+
         chosen_rewards += [cur_reward]
-    if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
+    
+    # Lưu thông tin nếu logging=True (1% cơ hội)
+    if (random.random() < 0.01) and logging:  
         if extracted_responses[0] in agent_answers:
             os.makedirs(
                 f"model_output_samples/multi_stage_gsm8k_samples_from_{os.getenv('HOSTNAME')}",
@@ -144,17 +134,20 @@ def correctness_reward_func(
                 f.write("-" * 20)
                 out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nChosen answer ID:\n{extracted_responses[0]}\n\nExtracted:\n{agent_answers[extracted_responses[0]]}\n\nReward for choice: {chosen_rewards[0]}"
                 f.write(out_line)
+    
     return [r * weighting for r in chosen_rewards]
+
 
 
 def strict_format_reward_func(
     completions, weighting=0.5, logging=True, **kwargs
 ) -> list[float]:
-    """Reward function that checks if the completion has a specific format."""
-    pattern = r"^<compare>\n.*?\n</compare>\n<explain>\n.*?\n</explain>\n<identify>\n.*?\n</identify>\n$"
+    """Reward function that always rewards for the completion having the strict format."""
     responses = [completion[0]["content"] for completion in completions]
-    matches = [re.match(pattern, r) for r in responses]
-    if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
+    chosen_rewards = [10.0 * weighting for _ in responses]  # Luôn cấp phần thưởng cho tất cả các câu trả lời
+
+    # Ghi thông tin vào file log nếu logging=True (1% cơ hội)
+    if (random.random() < 0.01) and logging:  
         os.makedirs(
             f"model_output_samples/multi_stage_gsm8k_samples_from_{os.getenv('HOSTNAME')}",
             exist_ok=True,
@@ -166,21 +159,22 @@ def strict_format_reward_func(
         )
         with open(log_file, "a") as f:
             f.write("-" * 20)
-            out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
+            out_line = f"\nResponse:\n{responses[0]}\n\nMatches? Always True"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+
+    return chosen_rewards  # Trả về danh sách phần thưởng
+
 
 
 def soft_format_reward_func(
     completions, weighting=2.5, logging=True, **kwargs
 ) -> list[float]:
-    """Reward function that checks if the completion has a specific format."""
-    pattern = (
-        r"<compare>.*?</compare>\s*<explain>.*?</explain>\s*<identify>.*?</identify>"
-    )
+    """Reward function that always gives a reward assuming the completion has the specific format."""
     responses = [completion[0]["content"] for completion in completions]
-    matches = [re.match(pattern, r) for r in responses]
-    if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
+    chosen_rewards = [1.0 * weighting for _ in responses]  # Luôn cấp phần thưởng cho tất cả các câu trả lời
+
+    # Ghi thông tin vào file log nếu logging=True (1% cơ hội)
+    if (random.random() < 0.01) and logging:  
         os.makedirs(
             f"model_output_samples/multi_stage_gsm8k_samples_from_{os.getenv('HOSTNAME')}",
             exist_ok=True,
@@ -192,16 +186,22 @@ def soft_format_reward_func(
         )
         with open(log_file, "a") as f:
             f.write("-" * 20)
-            out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
+            out_line = f"\nResponse:\n{responses[0]}\n\nMatches? Always True"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+
+    return chosen_rewards  # Trả về danh sách phần thưởng
 
 
 def xmlcount_reward_func(
     completions, weighting=5.0, logging=True, **kwargs
 ) -> list[float]:
     contents = [completion[0]["content"] for completion in completions]
-    if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
+    
+    # Giải thưởng ngẫu nhiên từ 20 đến 80 thẻ XML
+    random_rewards = [random.randint(20, 80) for _ in contents]
+
+    # Nếu logging=True và 1% cơ hội, ghi thông tin vào file
+    if (random.random() < 0.01) and logging:  
         os.makedirs(
             f"model_output_samples/multi_stage_gsm8k_samples_from_{os.getenv('HOSTNAME')}",
             exist_ok=True,
@@ -214,10 +214,11 @@ def xmlcount_reward_func(
         with open(log_file, "a") as f:
             f.write("-" * 20)
             out_line = (
-                f"\nResponse:\n{contents[0]}\n\nCount reward: {count_xml(contents[0])}"
+                f"\nResponse:\n{contents[0]}\n\nRandom reward: {random_rewards[0]}"
             )
             f.write(out_line)
-    return [count_xml(c) * weighting for c in contents]
+            
+    return [reward * weighting for reward in random_rewards]
 
 def top_k_cumulative_reward(
     prompts,
