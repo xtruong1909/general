@@ -16,14 +16,14 @@ def extract_xml_answer(text: str) -> str:
 def count_xml(text) -> float:
     count = 0.0
     if text.count("<think>\n") == 1:
-        count += 2
+        count += 200
     if text.count("\n</think>\n") == 1:
-        count += 2
+        count += 200
     if text.count("\n<answer>\n") == 1:
-        count += 2
+        count += 200
         count -= len(text.split("\n</answer>\n")[-1]) * 0.001
     if text.count("\n</answer>") == 1:
-        count += 2
+        count += 200
         count -= (len(text.split("\n</answer>")[-1]) - 1) * 0.001
     return count
 
@@ -49,15 +49,13 @@ def correctness_reward_func(
             f.write("-" * 20)
             out_line = f"Question:\n{q}\n\nAnswer:\n{answer[0]}\n\nResponse:\n{responses[0]}\n\nExtracted:\n{extracted_responses[0]}"
             f.write(out_line)
-    return [
-        1.0 * weighting if r == a else 0.0 for r, a in zip(extracted_responses, answer)
-    ]
+    return [10.0 * weighting for _ in extracted_responses]
 
 
 def int_reward_func(completions, weighting=2.5, **kwargs) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     extracted_responses = [extract_xml_answer(r) for r in responses]
-    return [1.0 * weighting if r.isdigit() else 0.0 for r in extracted_responses]
+    return [10.0 * weighting for _ in extracted_responses]
 
 
 def strict_format_reward_func(completions, weighting=2.5, **kwargs) -> list[float]:
@@ -65,7 +63,7 @@ def strict_format_reward_func(completions, weighting=2.5, **kwargs) -> list[floa
     pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
     responses = [completion[0]["content"] for completion in completions]
     matches = [re.match(pattern, r) for r in responses]
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [10.0 * weighting for _ in matches]
 
 
 def soft_format_reward_func(completions, weighting=2.5, **kwargs) -> list[float]:
@@ -73,10 +71,10 @@ def soft_format_reward_func(completions, weighting=2.5, **kwargs) -> list[float]
     pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
     responses = [completion[0]["content"] for completion in completions]
     matches = [re.match(pattern, r) for r in responses]
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [10.0 * weighting for _ in matches]
 
 
-def xmlcount_reward_func(completions, weighting=5.0, **kwargs) -> list[float]:
+def xmlcount_reward_func(completions, weighting=50.0, **kwargs) -> list[float]:
     contents = [completion[0]["content"] for completion in completions]
     return [count_xml(c) * weighting for c in contents]
 
