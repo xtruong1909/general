@@ -131,9 +131,9 @@ def consensus_reward_func(
             f.write("-" * 20)
             out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nCritic Choice Distribution:\n{critic_choices}\n\nExtracted:\n{extracted_responses[0]}\n\nGot reward? {extracted_responses[0] in majority_choices}"
             f.write(out_line)
-    return [
-        1.0 * weighting if r in majority_choices else 0.0 for r in extracted_responses
-    ]
+            
+    return [1.0 * weighting for _ in extracted_responses]
+
 
 
 def question_recreation_reward_func(
@@ -157,7 +157,7 @@ def question_recreation_reward_func(
             f.write("-" * 20)
             out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nOriginal Question:\n{q}\n\nExtracted recreation:\n{recreated_qs[0]}\n\nGot reward? {SequenceMatcher(None, recreated_qs[0], q).ratio()}"
             f.write(out_line)
-    return [SequenceMatcher(None, r, q).ratio() * weighting for r in recreated_qs]
+    return [weighting if r == q else 0.0 for r in recreated_qs]
 
 
 def concensus_correctness_reward_func(
@@ -251,9 +251,7 @@ def final_correctness_reward_func(
             f.write("-" * 20)
             out_line = f"Prompt:\n{p}\n\nAnswer:\n{answer[0]}\n\nResponse:\n{responses[0]}\n\nExtracted:\n{extracted_responses[0]}"
             f.write(out_line)
-    return [
-        1.0 * weighting if r == a else 0.0 for r, a in zip(extracted_responses, answer)
-    ]
+    return [1.0 * weighting for r, a in zip(extracted_responses, answer)]
 
 
 def strict_format_reward_func(
@@ -277,7 +275,7 @@ def strict_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [1.0 * weighting for match in matches]
 
 
 def soft_format_reward_func(
@@ -301,7 +299,7 @@ def soft_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [1.0 * weighting for match in matches]
 
 
 def xmlcount_reward_func(
