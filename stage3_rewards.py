@@ -67,26 +67,26 @@ def extract_answers(text: str) -> str:
 def count_xml(text) -> float:
     count = 0.0
     if text.count("<summarize_feedback>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("\n</summarize_feedback>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("<majority>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("\n</majority>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("<question>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("\n</question>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("<think>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("\n</think>\n") == 1:
-        count += 0.125
+        count += 125
     if text.count("\n<answer>\n") == 1:
-        count += 0.125
+        count += 125
         count -= len(text.split("\n</answer>\n")[-1]) * 0.001
     if text.count("\n</answer>") == 1:
-        count += 0.125
+        count += 125
         count -= (len(text.split("\n</answer>")[-1]) - 1) * 0.001
     return count
 
@@ -110,7 +110,7 @@ def swarm_majority(choices):
 
 # Reward functions
 def consensus_reward_func(
-    prompts, completions, weighting=2.0, logging=False, **kwargs
+    prompts, completions, weighting=20, logging=False, **kwargs
 ) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
@@ -137,7 +137,7 @@ def consensus_reward_func(
 
 
 def question_recreation_reward_func(
-    prompts, completions, weighting=1.0, logging=False, **kwargs
+    prompts, completions, weighting=10, logging=False, **kwargs
 ) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
@@ -161,7 +161,7 @@ def question_recreation_reward_func(
 
 
 def concensus_correctness_reward_func(
-    prompts, completions, answer, weighting=2.0, logging=False, **kwargs
+    prompts, completions, answer, weighting=20, logging=False, **kwargs
 ) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
@@ -177,15 +177,15 @@ def concensus_correctness_reward_func(
         if r in agent_answers:
              # Compare only when there is a correct answer
             if correct_answer is not None and stage1_rewards.extract_xml_answer(agent_answers[r]) == correct_answer:
-                cur_reward += 1.0
+                cur_reward += 10
             if stage1_rewards.extract_xml_answer(agent_answers[r]).isdigit():
-                cur_reward += 0.5
+                cur_reward += 15
             pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
             if re.match(pattern, agent_answers[r]):
-                cur_reward += 0.5
+                cur_reward += 15
             pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
             if re.match(pattern, agent_answers[r]):
-                cur_reward += 0.5
+                cur_reward += 15
             cur_reward += stage1_rewards.count_xml(agent_answers[r])
         elif r in [
             "None",
@@ -229,7 +229,7 @@ def concensus_correctness_reward_func(
 
 
 def final_correctness_reward_func(
-    prompts, completions, answer, weighting=2.0, logging=False, **kwargs
+    prompts, completions, answer, weighting=20, logging=False, **kwargs
 ) -> list[float]:
     responses = [completion[0]["content"] for completion in completions]
     p = prompts[0][-1]["content"]
@@ -257,7 +257,7 @@ def final_correctness_reward_func(
 
 
 def strict_format_reward_func(
-    completions, weighting=0.5, logging=False, **kwargs
+    completions, weighting=15, logging=False, **kwargs
 ) -> list[float]:
     """Reward function that checks if the completion has a specific format."""
     pattern = r"^<summarize_feedback>\n.*?\n</summarize_feedback>\n<majority>\n.*?\n</majority>\n<question>\n.*?\n</question>\n<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>\n$"
@@ -281,7 +281,7 @@ def strict_format_reward_func(
 
 
 def soft_format_reward_func(
-    completions, weighting=0.5, logging=False, **kwargs
+    completions, weighting=15, logging=False, **kwargs
 ) -> list[float]:
     """Reward function that checks if the completion has a specific format."""
     pattern = r"<summarize_feedback>.*?</summarize_feedback>\s*<majority>.*?</majority>\s*<question>.*?</question>\s*<think>.*?</think>\s*<answer>.*?</answer>"
@@ -305,7 +305,7 @@ def soft_format_reward_func(
 
 
 def xmlcount_reward_func(
-    completions, weighting=1.0, logging=False, **kwargs
+    completions, weighting=10, logging=False, **kwargs
 ) -> list[float]:
     contents = [completion[0]["content"] for completion in completions]
     if (random.random() < 0.01) and logging:  # 1% chance to write samples into a file
