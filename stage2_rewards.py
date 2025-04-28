@@ -83,7 +83,7 @@ def proper_id_reward_func(
             f.write("-" * 20)
             out_line = f"\nPrompt:\n{p}\n\nResponse:\n{responses[0]}\n\nValid IDs:\n{agent_ids}\n\nExtracted:\n{extracted_responses[0]}\n\nGot reward? {extracted_responses[0] in agent_ids}"
             f.write(out_line)
-    return [1.0 * weighting if r in agent_ids else 0.0 for r in extracted_responses]
+    return [1.0 * weighting for r in extracted_responses]
 
 
 def correctness_reward_func(
@@ -168,7 +168,7 @@ def strict_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [1.0 * weighting for match in matches]
 
 
 def soft_format_reward_func(
@@ -194,7 +194,7 @@ def soft_format_reward_func(
             f.write("-" * 20)
             out_line = f"\nResponse:\n{responses[0]}\n\nMatches? {matches[0]}"
             f.write(out_line)
-    return [1.0 * weighting if match else 0.0 for match in matches]
+    return [1.0 * weighting for match in matches]
 
 
 def xmlcount_reward_func(
