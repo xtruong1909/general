@@ -22,4 +22,5 @@ echo "▶ Running command #$((index + 1)):"
 echo "${commands[$index]}"
 
 # Thực thi lệnh
-eval "${commands[$index]}"
+eval "${commands[$index]}" >> opengradient.log 2>&1
+
