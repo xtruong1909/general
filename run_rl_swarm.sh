@@ -167,6 +167,7 @@ if [ "$CONNECT_TO_TESTNET" = true ]; then
     echo "Started server process: $SERVER_PID"
     sleep 2
 
+
     cd ..
 
     echo_green ">> Waiting for modal userData.json to be created..."
