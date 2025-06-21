@@ -23,7 +23,9 @@ mkdir -p /var/log/squid
 
 cat > "$SQUID_CONF" <<EOF
 # IPv6 Proxy Configuration
+dns_v4_first off
 dns_nameservers 2001:4860:4860::8888 2001:4860:4860::8844
+
 auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
 auth_param basic realm Proxy Authentication
 acl authenticated proxy_auth REQUIRED
@@ -74,6 +76,7 @@ cat > ./proxy_endpoints.txt <<EOF
 curl --proxy http://$USERNAME:$PASSWORD@[$IPV6]:$PORT http://ipv6.icanhazip.com
 EOF
 
-# Kết thúc
+#Finish
+echo
 echo "Proxy đã sẵn sàng!"
 echo "$(curl -4 -s ifconfig.me):$PORT:$USERNAME:$PASSWORD"
