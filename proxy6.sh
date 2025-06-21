@@ -1,3 +1,57 @@
+# IPv6 Proxy Configuration
+dns_v4_first off
+dns_nameservers 2001:4860:4860::8888 2001:4860:4860::8844
+
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/squid_passwd
+auth_param basic realm Proxy Authentication
+acl authenticated proxy_auth REQUIRED
+http_access allow authenticated
+http_access deny all
+
+cache deny all
+forwarded_for off
+via off
+request_header_access X-Forwarded-For deny all
+request_header_access Via deny all
+request_header_access X-Real-IP deny all
+
+access_log /var/log/squid/access.log
+cache_log /var/log/squid/cache.log
+pid_filename /var/run/squid.pid
+
+http_port [::]:33333 name=mainport
+acl mainport myportname mainport
+tcp_outgoing_address 2401:1960:0:82a3::1 mainport
+root@h01-43802:~# curl -6 --proxy http://USERNAME:PASSWORD@[2401:1960:0:82a3::1]:33333 https://telegram.org
+curl: (56) Received HTTP code 407 from proxy after CONNECT
+root@h01-43802:~# nano ipv6.sh
+root@h01-43802:~# bash ipv6.sh 
+=== Tạo proxy IPv6 từ địa chỉ hiện có trên eth0 ===
+→ Đang tìm địa chỉ IPv6...
+✅ Tìm thấy IPv6: 2401:1960:0:82a3::1
+→ Đang tạo cấu hình Squid tại /etc/squid/squid.conf...
+→ Tạo user Squid proxy...
+Adding password for user airdrop2024
+→ Restart dịch vụ Squid...
+✅ Squid đang chạy
+→ Lưu danh sách proxy...
+
+✅ Proxy đã sẵn sàng!
+→ IP: [2401:1960:0:82a3::1]
+→ Port: 3128
+→ Username: airdrop2024
+→ Password: Myproxy2024
+→ File:
+   - proxy_list.txt
+   - proxy_list_curl.txt
+   - proxy_endpoints.txt
+root@h01-43802:~# cat proxy
+cat: proxy: No such file or directory
+root@h01-43802:~# cat proxy.t
+cat: proxy.t: No such file or directory
+root@h01-43802:~# cat proxy_list.txt 
+[2401:1960:0:82a3::1]:3128:airdrop2024:Myproxy2024
+root@h01-43802:~# cat proxy6.sh 
 #!/bin/bash
 SQUID_CONF="/etc/squid/squid.conf"
 PASSWD_FILE="/etc/squid/squid_passwd"
@@ -76,13 +130,11 @@ cat > ./proxy_endpoints.txt <<EOF
 curl --proxy http://$USERNAME:$PASSWORD@[$IPV6]:$PORT http://ipv6.icanhazip.com
 EOF
 
-# Kết thúc
+#Finish
 echo
 echo "Proxy đã sẵn sàng!"
-echo "→ IP: [$IPV6]"
-echo "→ Port: $PORT"
-echo "→ Username: $USERNAME"
-echo "→ Password: $PASSWORD"
+echo "$(curl -4 -s ifconfig.me):$PORT:$USERNAME:$PASSWORD"
+echo
 echo "→ File:"
 echo "   - proxy_list.txt"
 echo "   - proxy_list_curl.txt"
