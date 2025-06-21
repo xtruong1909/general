@@ -23,9 +23,7 @@ mkdir -p /var/log/squid
 
 cat > "$SQUID_CONF" <<EOF
 # IPv6 Proxy Configuration
-dns_v4_first off
 dns_nameservers 2001:4860:4860::8888 2001:4860:4860::8844
-
 auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
 auth_param basic realm Proxy Authentication
 acl authenticated proxy_auth REQUIRED
