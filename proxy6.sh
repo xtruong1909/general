@@ -24,26 +24,22 @@ mkdir -p /var/log/squid
 cat > "$SQUID_CONF" <<EOF
 # IPv6 Proxy Configuration
 dns_nameservers 2001:4860:4860::8888 2001:4860:4860::8844
-auth_param basic program /usr/lib/squid/basic_ncsa_auth $PASSWD_FILE
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/squid_passwd
 auth_param basic realm Proxy Authentication
 acl authenticated proxy_auth REQUIRED
 http_access allow authenticated
 http_access deny all
-
 cache deny all
-forwarded_for off
-via off
 request_header_access X-Forwarded-For deny all
 request_header_access Via deny all
 request_header_access X-Real-IP deny all
-
 access_log /var/log/squid/access.log
 cache_log /var/log/squid/cache.log
 pid_filename /var/run/squid.pid
 
 http_port [::]:$PORT name=mainport
 acl mainport myportname mainport
-tcp_outgoing_address $IPV6 mainport
+tcp_outgoing_address $(ip -6 addr show dev eth0 | grep 'scope global' | awk '{print $2}' | cut -d'/' -f1 | head -n1) mainport
 EOF
 
 # Tạo user/password proxy
