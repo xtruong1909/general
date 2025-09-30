@@ -168,6 +168,9 @@ else
         (echo "$CURRENT_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
     fi
 fi
+echo ""
+echo -e "\e[92mDe kich hoat services, chay lenh sau:\e[0m"
+echo ""
+echo -e "\e[92msystemctl enable rl-swarm rl-swarm2 && systemctl restart rl-swarm2\e[0m"
+echo ""
 
-echo "De kich hoat services, chay lenh sau:"
-echo "  systemctl enable rl-swarm rl-swarm2 && systemctl restart rl-swarm2"
