@@ -4,7 +4,6 @@ LOGNAME=$(logname 2>/dev/null)
 USER_HOME="/home/$LOGNAME"
 
 # Tao service rl-swarm
-echo "Tao service rl-swarm..."
 cat << 'EOF' > /etc/systemd/system/rl-swarm.service
 [Unit]
 Description=RL Swarm Service
@@ -24,7 +23,6 @@ WantedBy=multi-user.target
 EOF
 
 # Tao service rl-swarm2
-echo "Tao service rl-swarm2..."
 cat << EOF > /etc/systemd/system/rl-swarm2.service
 [Unit]
 Description=Auto Run Gensyn Script
@@ -42,7 +40,6 @@ WantedBy=multi-user.target
 EOF
 
 # Tao file auto.run (ghi de neu da ton tai)
-echo "Da tao file auto.run"
 cat << EOF > "$USER_HOME/gensyn/run/auto.run"
 #!/bin/bash
 
