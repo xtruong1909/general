@@ -168,9 +168,132 @@ else
         (echo "$CURRENT_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
     fi
 fi
+
+
+echo "BAT DAU CAI DAT CAC PACKAGE CAN THIET"
+
+# Danh sach cac package can cai
+PACKAGES="screen curl iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip python3 python3-pip python3.10-venv"
+
+# Kiem tra va cai dat cac package con thieu
+echo "Kiem tra cac package..."
+MISSING_PACKAGES=""
+
+for pkg in $PACKAGES; do
+    if ! dpkg -l | grep -q "^ii  $pkg "; then
+        MISSING_PACKAGES="$MISSING_PACKAGES $pkg"
+    fi
+done
+
+if [ -z "$MISSING_PACKAGES" ]; then
+    echo "Tat ca cac package da duoc cai dat!"
+else
+    echo "Cac package can cai dat:$MISSING_PACKAGES"
+    echo "Dang cai dat..."
+    sudo apt update
+    sudo apt install -y $MISSING_PACKAGES
+    echo "Da cai dat xong cac package!"
+fi
+
+
+echo "KIEM TRA VA CAI DAT NODE.JS"
+
+# Kiem tra Node.js
+if command -v node &> /dev/null; then
+    NODE_VERSION=$(node -v)
+    NODE_MAJOR=$(echo $NODE_VERSION | cut -d'.' -f1 | sed 's/v//')
+    echo "Node.js da duoc cai dat: $NODE_VERSION"
+    
+    if [ "$NODE_MAJOR" -lt 22 ]; then
+        echo "Phien ban Node.js qua cu, dang nang cap len v22..."
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        echo "Da nang cap Node.js!"
+    else
+        echo "Phien ban Node.js phu hop, khong can nang cap."
+    fi
+else
+    echo "Node.js chua duoc cai dat, dang cai dat v22..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    echo "Da cai dat Node.js!"
+fi
+
+echo "KIEM TRA VA CAI DAT YARN"
+
+
+# Kiem tra Yarn
+if command -v yarn &> /dev/null; then
+    YARN_VERSION=$(yarn -v)
+    echo "Yarn da duoc cai dat: v$YARN_VERSION"
+else
+    echo "Yarn chua duoc cai dat, dang cai dat..."
+    curl -o- -L https://yarnpkg.com/install.sh | bash
+    
+    # Them Yarn vao PATH
+    export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
+    
+    # Them vao bashrc neu chua co
+    if ! grep -q ".yarn/bin" ~/.bashrc; then
+        echo 'export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"' >> ~/.bashrc
+    fi
+    
+    source ~/.bashrc
+    echo "Da cai dat Yarn!"
+fi
+
+# Xac dinh thu muc rl-swarm
+RL_SWARM_DIR="/root/rl-swarm"
+
 echo ""
-echo -e "\e[92mDe kich hoat services, chay lenh sau:\e[0m"
+
+echo "KIEM TRA VA CLONE RL-SWARM"
+
+
+# Kiem tra thu muc rl-swarm
+if [ -d "$RL_SWARM_DIR" ]; then
+    echo "Thu muc rl-swarm da ton tai tai: $RL_SWARM_DIR"
+    echo "Bo qua buoc git clone."
+else
+    echo "Thu muc rl-swarm chua ton tai, dang clone..."
+    cd /root
+    git clone https://github.com/hiepntnaa/rl-swarm/
+    
+    if [ $? -eq 0 ]; then
+        echo "Da clone thanh cong rl-swarm!"
+    else
+        echo "LOI: Khong the clone rl-swarm!"
+        exit 1
+    fi
+fi
+
+echo ""
+
+echo "KIEM TRA VA TAO VIRTUAL ENVIRONMENT"
+
+
+# Kiem tra .venv trong rl-swarm
+if [ -d "$RL_SWARM_DIR/.venv" ]; then
+    echo "Virtual environment da ton tai tai: $RL_SWARM_DIR/.venv"
+    echo "Bo qua buoc tao venv."
+else
+    echo "Virtual environment chua ton tai, dang tao..."
+    cd "$RL_SWARM_DIR"
+    python3 -m venv .venv
+    
+    if [ $? -eq 0 ]; then
+        echo "Da tao thanh cong virtual environment!"
+    else
+        echo "LOI: Khong the tao virtual environment!"
+        exit 1
+    fi
+fi
+
+
+echo ""
+echo -e "\e[92mDe hoan tat chay: cd /root/rl-swarm && . .venv/bin/activate && ./run_first.sh\e[0m"
+echo ""
+echo -e "\e[92mDoi toi khi node bat dau trainnig thi dung lai, sau do chay service bang lenh ben duoi:\e[0m"
 echo ""
 echo -e "\e[92msystemctl enable rl-swarm rl-swarm2 && systemctl restart rl-swarm2\e[0m"
 echo ""
-
