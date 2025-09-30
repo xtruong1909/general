@@ -41,12 +41,8 @@ Environment=LOGNAME=$LOGNAME
 WantedBy=multi-user.target
 EOF
 
-# Tao thu muc neu chua co
-echo "Tao thu muc $USER_HOME/gensyn/run..."
-mkdir -p "$USER_HOME/gensyn/run"
-
 # Tao file auto.run (ghi de neu da ton tai)
-echo "Tao file auto.run..."
+echo "Da tao file auto.run"
 cat << EOF > "$USER_HOME/gensyn/run/auto.run"
 #!/bin/bash
 
@@ -148,7 +144,6 @@ EOF
 
 # Them quyen thuc thi
 chmod +x "$USER_HOME/gensyn/run/auto.run"
-echo "Da them quyen thuc thi cho auto.run"
 
 # Reload systemd
 systemctl daemon-reload
@@ -157,14 +152,11 @@ systemctl daemon-reload
 CRON_CMD="0 2,5,8,11,14,17,20,23 * * * systemctl restart rl-swarm2"
 CRON_COMMENT="# Auto restart rl-swarm2 every 3 hours"
 
-echo "Cau hinh crontab cho root..."
-
 # Lay crontab hien tai cua root
 CURRENT_CRON=$(crontab -l 2>/dev/null)
 
 # Kiem tra xem cron job da ton tai chua
 if echo "$CURRENT_CRON" | grep -qF "systemctl restart rl-swarm2"; then
-    echo "Cron job da ton tai, xoa va them lai..."
     # Xoa dong cu va them lai
     UPDATED_CRON=$(echo "$CURRENT_CRON" | grep -vF "systemctl restart rl-swarm2" | grep -vF "Auto restart rl-swarm2")
     if [ -z "$UPDATED_CRON" ]; then
@@ -173,7 +165,6 @@ if echo "$CURRENT_CRON" | grep -qF "systemctl restart rl-swarm2"; then
         (echo "$UPDATED_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
     fi
 else
-    echo "Them cron job moi..."
     if [ -z "$CURRENT_CRON" ]; then
         (echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
     else
@@ -181,5 +172,5 @@ else
     fi
 fi
 
-echo "De kich hoat services, chay cac lenh sau:"
+echo "De kich hoat services, chay lenh sau:"
 echo "  systemctl enable rl-swarm rl-swarm2 && systemctl restart rl-swarm2"
