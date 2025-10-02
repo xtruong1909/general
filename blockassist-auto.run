@@ -45,6 +45,13 @@ check_and_install_pyenv() {
         return 0
     fi
     
+    info "Cài đặt các dependencies cho Python..."
+    sudo apt update
+    sudo apt install -y make build-essential libssl-dev zlib1g-dev \
+        libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+        libncurses5-dev libncursesw5-dev xz-utils tk-dev \
+        libffi-dev liblzma-dev git libxml2-dev libxmlsec1-dev
+    
     if [ -d "$HOME/.pyenv" ]; then
         warning "Thư mục .pyenv đã tồn tại"
     else
@@ -155,23 +162,15 @@ show_completion_info() {
     echo ""
 }
 
-# Main execution
-main() {
-    info "Bắt đầu quá trình cài đặt blockassist..."
-    echo ""
+# 7. Tạo file auto.run
+create_auto_run() {
+    info "Bước 6: Tạo file auto.run..."
     
-    check_and_clone_repo
-    check_and_install_pyenv
-    check_and_install_python
-    run_setup_script
-    check_and_install_libraries
-    show_completion_info
-}
-
-# Chạy script
-main
-
-cat << 'EOF' > /root/blockassist/auto.run
+    if [ -f "$HOME/blockassist/auto.run" ]; then
+        warning "File auto.run đã tồn tại, ghi đè..."
+    fi
+    
+    cat << 'AUTORUN_EOF' > "$HOME/blockassist/auto.run"
 #!/bin/bash
 set -euo pipefail
 
@@ -253,7 +252,7 @@ run_training() {
     
     # Create a temporary expect script to handle the interactive input
     EXPECT_SCRIPT=$(mktemp)
-    cat > "$EXPECT_SCRIPT" << EOF
+    cat > "$EXPECT_SCRIPT" << 'EXPECT_EOF'
 #!/usr/bin/expect -f
 set timeout -1
 spawn python run.py
@@ -276,7 +275,7 @@ expect {
     }
     eof
 }
-EOF
+EXPECT_EOF
     chmod +x "$EXPECT_SCRIPT"
     
     # Run the script and log output
@@ -294,12 +293,11 @@ EOF
     print_info "Training hoan thanh cho i = $i"
 }
 
-
 # Ghi log thoi gian bat dau
 echo "Auto training session started at $(date)" | tee -a "$LOG_FILE"
 
 # Lay danh sach token hop le (bo dong trong va dong comment #)
-TOKENS=$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE")
+TOKENS=$(grep -vE '^\s*#|^\s* "$TOKEN_FILE")
 NUM_LINES=$(echo "$TOKENS" | wc -l)
 
 # Loop qua tung token hop le
@@ -333,4 +331,25 @@ for i in $(seq 1 "$NUM_LINES"); do
     sleep $SLEEP_TIME
 done
 print_info "Xem logs: tail -f $LOG_FILE"
-EOF
+AUTORUN_EOF
+    
+    chmod +x "$HOME/blockassist/auto.run"
+    info "File auto.run đã được tạo tại $HOME/blockassist/auto.run"
+}
+
+# Main execution
+main() {
+    info "Bắt đầu quá trình cài đặt blockassist..."
+    echo ""
+    
+    check_and_clone_repo
+    check_and_install_pyenv
+    check_and_install_python
+    run_setup_script
+    check_and_install_libraries
+    create_auto_run
+    show_completion_info
+}
+
+# Chạy script
+main
