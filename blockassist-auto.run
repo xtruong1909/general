@@ -157,12 +157,15 @@ for i in $(seq 1 "$NUM_LINES"); do
     echo -e "${GREEN}[INFO]${NC} Xu ly folder $FOLDER_NAME (i = $i)"
     
     # ========== SETUP VPN ==========
-    OVPN_SOURCE_FILE="$OVPN_SOURCE_DIR/$FOLDER_NAME/client2.ovpn" 
+    # Tìm file .ovpn đầu tiên trong folder
+    OVPN_SOURCE_FILE=$(ls "$OVPN_SOURCE_DIR/$FOLDER_NAME"/*.ovpn 2>/dev/null | head -n 1)
     
-    if [ ! -f "$OVPN_SOURCE_FILE" ]; then
-        echo -e "${RED}[ERROR]${NC} File VPN k ton tai: $OVPN_SOURCE_FILE"
+    if [ -z "$OVPN_SOURCE_FILE" ] || [ ! -f "$OVPN_SOURCE_FILE" ]; then
+        echo -e "${RED}[ERROR]${NC} Khong tim thay file .ovpn trong: $OVPN_SOURCE_DIR/$FOLDER_NAME/"
         continue
     fi
+    
+    echo -e "${GREEN}[INFO]${NC} Su dung file VPN: $(basename "$OVPN_SOURCE_FILE")"
     
     cp "$OVPN_SOURCE_FILE" "$OVPN_DEST_PATH"
     systemctl restart ovpn
