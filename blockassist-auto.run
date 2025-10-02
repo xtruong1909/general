@@ -1,0 +1,162 @@
+#!/bin/bash
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Function to print colored output
+print_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Define paths
+OVPN_SOURCE_DIR="/home/$(logname)/ovpn"
+OVPN_DEST_PATH="/home/$(logname)/.ovpn.ovpn"
+TOKEN_FILE="/home/$(logname)/gensyn/huggingface.token"
+BLOCKASSIST_DIR="/root/blockassist"
+DEST_DIR="/root/blockassist/modal-login"
+LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
+
+# Check if expect is installed
+if ! command -v expect &> /dev/null; then
+    apt-get update && apt-get install -y expect
+fi
+
+# Function to setup VPN
+setup_vpn() {
+    local i=$1
+    local FOLDER_NAME=$(printf "%02d" "$i")
+    local OVPN_SOURCE_FILE="$OVPN_SOURCE_DIR/$FOLDER_NAME/client2.ovpn" 
+    # Check if source ovpn file exists
+    if [ ! -f "$OVPN_SOURCE_FILE" ]; then
+        print_error "File VPN k ton tai: $OVPN_SOURCE_FILE"
+        return 1
+    fi
+    cp "$OVPN_SOURCE_FILE" "$OVPN_DEST_PATH"
+    systemctl restart ovpn
+    sleep 5
+    ip=$(curl -4 ifconfig.me)
+    print_info "VPN da duoc thiet lap thanh cong cho folder $FOLDER_NAME. IP hien tai la $ip"
+}
+
+# Function to copy training data
+copy_training_data() {
+    local i=$1
+    local FOLDER_NAME=$(printf "%02d" "$i")
+    local SOURCE_DIR="/home/$(logname)/gensyn/$FOLDER_NAME/temp-data" 
+    if [ ! -d "$SOURCE_DIR" ]; then
+        print_error "Thu muc nguon k ton tai: $SOURCE_DIR"
+        return 1
+    fi
+    # Copy data
+    rm -rf "$DEST_DIR/temp-data"
+    cp -r "$SOURCE_DIR"/ "$DEST_DIR/"
+}
+
+# Function to run training
+run_training() {
+    local i=$1
+    local FOLDER_NAME=$(printf "%02d" "$i")
+    cd "$BLOCKASSIST_DIR"
+    
+    # Get token from file
+    if [ ! -f "$TOKEN_FILE" ]; then
+        print_error "File token k ton tai: $TOKEN_FILE"
+        return 1
+    fi
+    
+    # Get the specific line (token)
+    TOKEN=$(sed -n "${i}p" "$TOKEN_FILE")
+    if [ -z "$TOKEN" ]; then
+        print_error "K the lay token tu dong $i trong file $TOKEN_FILE"
+        return 1
+    fi
+    
+    # Create a temporary expect script to handle the interactive input
+    EXPECT_SCRIPT=$(mktemp)
+    cat > "$EXPECT_SCRIPT" << EOF
+#!/usr/bin/expect -f
+set timeout -1
+spawn python run.py
+expect {
+    "*token*" {
+        send "$TOKEN\r"
+        exp_continue
+    }
+    "*Token*" {
+        send "$TOKEN\r"
+        exp_continue
+    }
+    "*huggingface*" {
+        send "$TOKEN\r"
+        exp_continue
+    }
+    "*HuggingFace*" {
+        send "$TOKEN\r"
+        exp_continue
+    }
+    eof
+}
+EOF
+    chmod +x "$EXPECT_SCRIPT"
+    
+    # Run the script and log output
+    print_info "Bat dau chay training..."
+    {
+        echo "$(date)"
+        echo "Source: $FOLDER_NAME | IP: $ip"
+        "$EXPECT_SCRIPT" 2>&1
+        echo "=== Training completed at $(date) ==="
+    } | tee -a "$LOG_FILE"
+    
+    # Cleanup
+    rm -f "$EXPECT_SCRIPT"
+    
+    print_info "Training hoan thanh cho i = $i"
+}
+
+
+# Ghi log thoi gian bat dau
+echo "Auto training session started at $(date)" | tee -a "$LOG_FILE"
+
+# Lay danh sach token hop le (bo dong trong va dong comment #)
+TOKENS=$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE")
+NUM_LINES=$(echo "$TOKENS" | wc -l)
+
+# Loop qua tung token hop le
+for i in $(seq 1 "$NUM_LINES"); do
+    FOLDER_NAME=$(printf "%02d" "$i")
+    TOKEN=$(echo "$TOKENS" | sed -n "${i}p")
+
+    print_info "Xu ly folder $FOLDER_NAME (i = $i)"
+    
+    # Buoc 1: Setup VPN
+    if ! setup_vpn "$i"; then
+        print_error "Loi thiet lap VPN cho i = $i. Bo qua..."
+        continue
+    fi
+    
+    # Buoc 2: Copy training data
+    if ! copy_training_data "$i"; then
+        print_error "Loi copy data cho i = $i. Bo qua..."
+        continue
+    fi
+    
+    # Buoc 3: Run training
+    if ! run_training "$i"; then
+        print_error "Loi training cho i = $i. Tiep tuc voi folder tiep theo..."
+        continue
+    fi
+    
+    # Nghi ngau nhien tu 20–40 giay
+    SLEEP_TIME=$((RANDOM % 21 + 20))
+    echo "Sleep $SLEEP_TIME seconds" | tee -a "$LOG_FILE"
+    sleep $SLEEP_TIME
+done
+print_info "Xem logs: tail -f $LOG_FILE"
+
