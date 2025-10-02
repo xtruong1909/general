@@ -142,32 +142,15 @@ check_and_install_libraries() {
     info "Tất cả thư viện đã được cài đặt!"
 }
 
-# 6. Hiển thị thông tin hoàn tất
-show_completion_info() {
-    echo ""
-    echo "=========================================="
-    info "CÀI ĐẶT HOÀN TẤT!"
-    echo "=========================================="
-    echo ""
-    info "Vị trí: $(pwd)"
-    info "Python version: $(python --version)"
-    info "Pyenv version: $(pyenv --version)"
-    echo ""
-    warning "Lưu ý: Nếu đây là lần đầu cài đặt pyenv, hãy chạy:"
-    echo "  source ~/.bashrc"
-    echo "hoặc mở terminal mới để áp dụng cấu hình."
-    echo ""
-}
-
-# 7. Tạo file auto.run
+# 6. Tạo file auto.run
 create_auto_run() {
     info "Bước 6: Tạo file auto.run..."
     
-    if [ -f "$HOME/blockassist/auto.run" ]; then
+    if [ -f "/root/blockassist/auto.run" ]; then
         warning "File auto.run đã tồn tại, ghi đè..."
     fi
     
-    cat << 'AUTORUN_EOF' > "$HOME/blockassist/auto.run"
+    cat > /root/blockassist/auto.run << 'AUTORUN_EOF'
 #!/bin/bash
 set -euo pipefail
 
@@ -249,7 +232,7 @@ run_training() {
     
     # Create a temporary expect script to handle the interactive input
     EXPECT_SCRIPT=$(mktemp)
-    cat > "$EXPECT_SCRIPT" << 'EXPECT_EOF'
+    cat > "$EXPECT_SCRIPT" << 'EXPECT_HEREDOC'
 #!/usr/bin/expect -f
 set timeout -1
 spawn python run.py
@@ -272,7 +255,7 @@ expect {
     }
     eof
 }
-EXPECT_EOF
+EXPECT_HEREDOC
     chmod +x "$EXPECT_SCRIPT"
     
     # Run the script and log output
@@ -294,7 +277,7 @@ EXPECT_EOF
 echo "Auto training session started at $(date)" | tee -a "$LOG_FILE"
 
 # Lay danh sach token hop le (bo dong trong va dong comment #)
-TOKENS=$(grep -vE '^\s*#|^\s* "$TOKEN_FILE")
+TOKENS=$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE")
 NUM_LINES=$(echo "$TOKENS" | wc -l)
 
 # Loop qua tung token hop le
@@ -330,8 +313,25 @@ done
 print_info "Xem logs: tail -f $LOG_FILE"
 AUTORUN_EOF
     
-    chmod +x "$HOME/blockassist/auto.run"
-    info "File auto.run đã được tạo tại $HOME/blockassist/auto.run"
+    chmod +x /root/blockassist/auto.run
+    info "File auto.run đã được tạo tại /root/blockassist/auto.run"
+}
+
+# 7. Hiển thị thông tin hoàn tất
+show_completion_info() {
+    echo ""
+    echo "=========================================="
+    info "CÀI ĐẶT HOÀN TẤT!"
+    echo "=========================================="
+    echo ""
+    info "Vị trí: $(pwd)"
+    info "Python version: $(python --version)"
+    info "Pyenv version: $(pyenv --version)"
+    echo ""
+    warning "Lưu ý: Nếu đây là lần đầu cài đặt pyenv, hãy chạy:"
+    echo "  source ~/.bashrc"
+    echo "hoặc mở terminal mới để áp dụng cấu hình."
+    echo ""
 }
 
 # Main execution
