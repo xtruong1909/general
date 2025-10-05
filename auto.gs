@@ -8,16 +8,15 @@ TARGET_DIR="/root/rl-swarm"
 # Thu muc con de copy temp-data
 LOGIN_SUBDIR="modal-login"
 
-# Tu dong tim so folder lon nhat (giu dinh dang 01, 02,...)
+# Tu dong tim so folder lon nhat
 MAX_FOLDER=$(find "$BASE_DIR" -maxdepth 1 -type d -name '[0-9]*' -printf '%f\n' | sort -n | tail -1)
-MAX_FOLDER=$((10#$MAX_FOLDER))  # Chuyen sang so thap phan de so sanh
 MAX_FOLDER=${MAX_FOLDER:-1}  # Mac dinh la 1 neu khong tim thay
 
-echo "$(date) - Phat hien co $MAX_FOLDER folder, se lap tu 01 den $(printf '%02d' $MAX_FOLDER)"
+echo "$(date) - Phat hien co $MAX_FOLDER folder, se lap tu 1 den $MAX_FOLDER"
 
 # Ham copy file va restart
 copy_and_restart() {
-    local idx=$(printf '%02d' "$1")  # Format thanh 01, 02, 03...
+    local idx="$1"
     PEM_SOURCE="$BASE_DIR/$idx/swarm.pem"
     TEMP_SOURCE="$BASE_DIR/$idx/temp-data"
     
@@ -56,11 +55,11 @@ copy_and_restart() {
     done
 }
 
-# Lan dau dung folder 01
-echo "$(date) - Khoi dong lan dau, dung folder 01"
+# Lan dau dung folder 1
+echo "$(date) - Khoi dong lan dau, dung folder 1"
 copy_and_restart 1
 
-# Bat dau vong lap tu folder 02
+# Bat dau vong lap tu folder 2
 CURRENT_INDEX=2
 # Thoi gian cho toi da (7 phut)
 TIMEOUT_SECONDS=420
@@ -78,13 +77,13 @@ while true; do
             CURRENT_INDEX=1
         fi
         
-        echo "$(date) - Phat hien submission completed, copy & restart voi folder $(printf '%02d' $CURRENT_INDEX)"
+        echo "$(date) - Phat hien submission completed, copy & restart voi folder $CURRENT_INDEX"
         copy_and_restart "$CURRENT_INDEX"
         ((CURRENT_INDEX++))
     else
         # Neu qua 7 phut khong phat hien submission completed thi chuyen index tiep
         if (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
-            echo "$(date) - Khong phat hien submission completed trong 7 phut, chuyen sang thu muc $(printf '%02d' $CURRENT_INDEX)"
+            echo "$(date) - Khong phat hien submission completed trong 7 phut, chuyen sang thu muc $CURRENT_INDEX"
             
             # Reset index neu vuot qua MAX_FOLDER truoc khi dung
             if (( CURRENT_INDEX > MAX_FOLDER )); then
