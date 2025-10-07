@@ -52,7 +52,7 @@ dht = DHT(
     start=True,
     host_maddrs=host_maddrs,
     announce_maddrs=announce_maddrs,
-    identity_path=identity_path,
+    identity_path=identity_path,  # 🔑 file này nếu chưa có sẽ được tạo mới
     parallel_rpc=8,
 )
 
@@ -62,12 +62,13 @@ logging.info(f"Visible addresses: {dht.get_visible_maddrs()}")
 
 while True:
     time.sleep(3600)
+
 EOF
 
 echo "=== ⚙️ Creating systemd service..."
 cat > /etc/systemd/system/hivemind.service << 'EOF'
 [Unit]
-Description=Hivemind DHT Node Service
+Description=Hivemind Service
 After=network.target
 
 [Service]
@@ -76,9 +77,9 @@ User=root
 WorkingDirectory=/root/hivemind
 ExecStart=/usr/bin/env PYTHONPATH=/root/hivemind /usr/bin/python3 /root/hivemind/run_dht.py
 Restart=always
-RestartSec=5
-StandardOutput=append:/var/log/hivemind.log
-StandardError=append:/var/log/hivemind.log
+# Ghi log ra journalctl
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
