@@ -61,8 +61,8 @@ copy_and_restart 1
 
 # Bat dau vong lap tu folder 2
 CURRENT_INDEX=2
-# Thoi gian cho toi da (7 phut)
-TIMEOUT_SECONDS=420
+# Thoi gian cho toi da (10 phut)
+TIMEOUT_SECONDS=600
 last_detect_time=$(date +%s)
 
 while true; do
@@ -81,9 +81,9 @@ while true; do
         copy_and_restart "$CURRENT_INDEX"
         ((CURRENT_INDEX++))
     else
-        # Neu qua 7 phut khong phat hien submission completed thi chuyen index tiep
+        # Neu 10 phut khong phat hien submission completed thi chuyen index tiep
         if (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
-            echo "$(date) - Khong phat hien submission completed trong 7 phut, chuyen sang thu muc $CURRENT_INDEX"
+            echo "$(date) - Khong phat hien submission completed trong 10 phut, chuyen sang thu muc $CURRENT_INDEX"
             
             # Reset index neu vuot qua MAX_FOLDER truoc khi dung
             if (( CURRENT_INDEX > MAX_FOLDER )); then
