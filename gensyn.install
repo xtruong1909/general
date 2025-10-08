@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e  # Dung lai neu co loi
+#set -e  # Dung lai neu co loi
 
 LOGNAME=$(logname 2>/dev/null)
 USER_HOME="/home/$LOGNAME"
