@@ -69,21 +69,21 @@ while true; do
     LOG_LAST=$(journalctl -u rl-swarm --since "10 seconds ago" -o cat)
     current_time=$(date +%s)
     
-    if echo "$LOG_LAST" | grep -q "submission completed"; then
+    if echo "$LOG_LAST" | grep -q "Joining round"; then
         last_detect_time=$current_time
         
         # Reset index neu vuot qua MAX_FOLDER truoc khi dung
         if (( CURRENT_INDEX > MAX_FOLDER )); then
             CURRENT_INDEX=1
-        fi
+        fis
         
-        echo "$(date) - Phat hien submission completed, copy & restart voi folder $CURRENT_INDEX"
+        echo "$(date) - Phat hien Joining round, copy & restart voi folder $CURRENT_INDEX"
         copy_and_restart "$CURRENT_INDEX"
         ((CURRENT_INDEX++))
     else
-        # Neu 10 phut khong phat hien submission completed thi chuyen index tiep
+        # Neu 10 phut khong phat hien Joining round thi chuyen index tiep
         if (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
-            echo "$(date) - Khong phat hien submission completed trong 10 phut, chuyen sang thu muc $CURRENT_INDEX"
+            echo "$(date) - Khong phat hien Joining round trong 10 phut, chuyen sang thu muc $CURRENT_INDEX"
             
             # Reset index neu vuot qua MAX_FOLDER truoc khi dung
             if (( CURRENT_INDEX > MAX_FOLDER )); then
