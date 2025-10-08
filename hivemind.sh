@@ -9,6 +9,9 @@ echo "=== 🧩 Upgrading pip & installing Python packages..."
 pip install --upgrade pip setuptools wheel
 pip install grpcio grpcio-tools
 
+echo "=== 🧩 Installing PyTorch CPU version..."
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
 echo "=== 🧩 Cloning Hivemind..."
 cd /root
 if [ ! -d "hivemind" ]; then
@@ -62,7 +65,6 @@ logging.info(f"Visible addresses: {dht.get_visible_maddrs()}")
 
 while True:
     time.sleep(3600)
-
 EOF
 
 echo "=== ⚙️ Creating systemd service..."
@@ -89,4 +91,10 @@ echo "=== 🔄 Reloading and starting service..."
 systemctl daemon-reload
 systemctl enable hivemind
 systemctl restart hivemind
-journalctl -u hivemind -fo cat
+
+echo "=== 📋 Service status:"
+systemctl status hivemind --no-pager
+
+echo ""
+echo "=== 📖 View logs with:"
+echo "    journalctl -u hivemind -f"
