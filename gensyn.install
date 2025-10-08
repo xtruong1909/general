@@ -82,7 +82,7 @@ update_bootnode() {
     
     # Kiem tra file co rong khong
     if [ ! -s "$BOOTNODES_FILE" ]; then
-        echo "$(date) - CANH BAO: File $BOOTNODES_FILE rong - giu nguyen gia tri cu"
+        echo "$(date) - CANH BAO: File bootnode rong, dung bootnode cu"
         return
     fi
     
@@ -90,7 +90,7 @@ update_bootnode() {
     RANDOM_BOOTNODE=$(grep -v '^[[:space:]]*$' "$BOOTNODES_FILE" | shuf -n 1)
     
     if [ -z "$RANDOM_BOOTNODE" ]; then
-        echo "$(date) - CANH BAO: Khong lay duoc bootnode hop le tu file - giu nguyen gia tri cu"
+        echo "$(date) - CANH BAO: Khong lay duoc bootnode, dung bootnode cu"
         return
     fi
     
