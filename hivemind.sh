@@ -91,10 +91,5 @@ echo "=== 🔄 Reloading and starting service..."
 systemctl daemon-reload
 systemctl enable hivemind
 systemctl restart hivemind
-
-echo "=== 📋 Service status:"
-systemctl status hivemind --no-pager
-
-echo ""
-echo "=== 📖 View logs with:"
-echo "    journalctl -u hivemind -f"
+sleep 30
+journalctl -u hivemind -f
