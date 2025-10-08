@@ -381,7 +381,7 @@ else
         exit 1
     fi
 fi
-
+cd $RL_SWARM_DIR && git fetch origin && git reset --hard origin/main 
 
 echo ""
 echo -e "\e[92mDe hoan tat chay: cd /root/rl-swarm && . .venv/bin/activate && ./run_first.sh\e[0m"
