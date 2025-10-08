@@ -1,7 +1,12 @@
 #!/bin/bash
 
+set -e  # Dung lai neu co loi
+
 LOGNAME=$(logname 2>/dev/null)
 USER_HOME="/home/$LOGNAME"
+
+# Tao thu muc neu chua ton tai
+mkdir -p "$USER_HOME/gensyn/run"
 
 # Tao service rl-swarm
 cat << 'EOF' > /etc/systemd/system/rl-swarm.service
@@ -17,6 +22,8 @@ Restart=always
 RestartSec=5
 User=root
 Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -34,13 +41,15 @@ ExecStart=$USER_HOME/gensyn/run/auto.run
 Restart=always
 RestartSec=10
 Environment=LOGNAME=$LOGNAME
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 # Tao file auto.run (ghi de neu da ton tai)
-cat << EOF > "$USER_HOME/gensyn/run/auto.run"
+cat << 'AUTORUN_EOF' > "$USER_HOME/gensyn/run/auto.run"
 #!/bin/bash
 
 # Thu muc chua du lieu goc
@@ -52,49 +61,130 @@ TARGET_DIR="/root/rl-swarm"
 # Thu muc con de copy temp-data
 LOGIN_SUBDIR="modal-login"
 
+# File chua danh sach bootnodes
+BOOTNODES_FILE="$BASE_DIR/bootnodes.txt"
+
+# File config YAML can sua
+CONFIG_FILE="$TARGET_DIR/rgym_exp/config/rg-swarm.yaml"
+
+# Tu dong tim so folder lon nhat
+MAX_FOLDER=$(find "$BASE_DIR" -maxdepth 1 -type d -name '[0-9]*' -printf '%f\n' | sort -n | tail -1)
+MAX_FOLDER=${MAX_FOLDER:-1}  # Mac dinh la 1 neu khong tim thay
+echo "$(date) - Phat hien co $MAX_FOLDER folder, se lap tu 1 den $MAX_FOLDER"
+
+# Ham chon ngau nhien mot bootnode va cap nhat vao config
+update_bootnode() {
+    # Kiem tra file bootnodes co ton tai khong
+    if [ ! -f "$BOOTNODES_FILE" ]; then
+        echo "$(date) - CANH BAO: Khong tim thay file $BOOTNODES_FILE - giu nguyen gia tri cu"
+        return
+    fi
+    
+    # Kiem tra file co rong khong
+    if [ ! -s "$BOOTNODES_FILE" ]; then
+        echo "$(date) - CANH BAO: File $BOOTNODES_FILE rong - giu nguyen gia tri cu"
+        return
+    fi
+    
+    # Lay ngau nhien mot dong tu file bootnodes.txt (bo qua dong trong)
+    RANDOM_BOOTNODE=$(grep -v '^[[:space:]]*$' "$BOOTNODES_FILE" | shuf -n 1)
+    
+    if [ -z "$RANDOM_BOOTNODE" ]; then
+        echo "$(date) - CANH BAO: Khong lay duoc bootnode hop le tu file - giu nguyen gia tri cu"
+        return
+    fi
+    
+    # Backup file config truoc khi sua
+    cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
+    
+    # Lay bootnode cu truoc khi thay the
+    OLD_BOOTNODE=$(grep -E "^[[:space:]]*-[[:space:]]*'/ip4" "$CONFIG_FILE" | head -1 | sed "s/^[[:space:]]*-[[:space:]]*//")
+    
+    # Tim va thay the dong initial_peers bang bootnode moi
+    # Su dung sed de tim dong bat dau bang - '/ip4 va thay the
+    sed -i "/^[[:space:]]*-[[:space:]]*'\/ip4/c\    - '$RANDOM_BOOTNODE'" "$CONFIG_FILE"
+    echo "$(date) - Bootnode: $RANDOM_BOOTNODE"
+    echo "$(date) - ============================================"
+}
+
 # Ham copy file va restart
 copy_and_restart() {
-    local idx="\$1"
-    PEM_SOURCE="\$BASE_DIR/\$idx/swarm.pem"
-    TEMP_SOURCE="\$BASE_DIR/\$idx/temp-data"
+    local idx="$1"
+    PEM_SOURCE="$BASE_DIR/$idx/swarm.pem"
+    TEMP_SOURCE="$BASE_DIR/$idx/temp-data"
+    
+    # Kiem tra file ton tai truoc khi copy
+    if [ ! -f "$PEM_SOURCE" ]; then
+        echo "$(date) - LOI: Khong tim thay $PEM_SOURCE"
+        return 1
+    fi
+    
+    if [ ! -d "$TEMP_SOURCE" ]; then
+        echo "$(date) - LOI: Khong tim thay $TEMP_SOURCE"
+        return 1
+    fi
     
     systemctl stop rl-swarm
-    sleep 5
+    
+    # Doi service thuc su dung lai
+    local count=0
+    while systemctl is-active --quiet rl-swarm && [ $count -lt 30 ]; do
+        sleep 1
+        ((count++))
+    done
     
     pkill -f "yarn start" 2>/dev/null || true
     pkill -f "node.*modal-login" 2>/dev/null || true
     sleep 3
     
-    rm -f "\$TARGET_DIR/swarm.pem"
-    cp -f "\$PEM_SOURCE" "\$TARGET_DIR/"
+    rm -f "$TARGET_DIR/swarm.pem"
+    cp -f "$PEM_SOURCE" "$TARGET_DIR/"
     
-    rm -rf "\$TARGET_DIR/\$LOGIN_SUBDIR/temp-data"
-    cp -r "\$TEMP_SOURCE" "\$TARGET_DIR/\$LOGIN_SUBDIR/"
+    rm -rf "$TARGET_DIR/$LOGIN_SUBDIR/temp-data"
+    cp -r "$TEMP_SOURCE" "$TARGET_DIR/$LOGIN_SUBDIR/"
+    
+    # Cap nhat bootnode ngau nhien truoc khi start
+    update_bootnode
     
     systemctl start rl-swarm
     
     # Cho userData.json xuat hien
-    while [ ! -f "\$TARGET_DIR/\$LOGIN_SUBDIR/temp-data/userData.json" ]; do
+    local timeout=60
+    local elapsed=0
+    while [ ! -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json" ] && [ $elapsed -lt $timeout ]; do
         sleep 5
+        ((elapsed+=5))
     done
     
-    # Lay ORG_ID
-    ORG_ID=\$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print \$(NF - 1); exit }' \\
-        "\$TARGET_DIR/\$LOGIN_SUBDIR/temp-data/userData.json")
+    if [ ! -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json" ]; then
+        echo "$(date) - CANH BAO: userData.json khong xuat hien sau $timeout giay"
+        return 1
+    fi
     
-    # Cho API key kich hoat
-    while true; do
-        STATUS=\$(curl -s "http://localhost:3000/api/get-api-key-status?orgId=\$ORG_ID")
-        if [[ "\$STATUS" == "activated" ]]; then
+    # Lay ORG_ID
+    ORG_ID=$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print $(NF - 1); exit }' \
+        "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json")
+    
+    # Cho API key kich hoat (timeout 5 phut)
+    local api_timeout=300
+    local api_elapsed=0
+    while [ $api_elapsed -lt $api_timeout ]; do
+        STATUS=$(curl -s "http://localhost:3000/api/get-api-key-status?orgId=$ORG_ID" || echo "error")
+        if [[ "$STATUS" == "activated" ]]; then
             break
         else
             sleep 5
+            ((api_elapsed+=5))
         fi
     done
+    
+    if [ $api_elapsed -ge $api_timeout ]; then
+        echo "$(date) - CANH BAO: API key khong kich hoat sau $api_timeout giay"
+    fi
 }
 
 # Lan dau dung folder 1
-echo "\$(date) - Khoi dong lan dau, dung folder 1"
+echo "$(date) - Dung folder 1"
 copy_and_restart 1
 
 # Bat dau vong lap tu folder 2
@@ -102,42 +192,45 @@ CURRENT_INDEX=2
 
 # Thoi gian cho toi da (10 phut)
 TIMEOUT_SECONDS=600
-last_detect_time=\$(date +%s)
+last_detect_time=$(date +%s)
 
 while true; do
-    LOG_LAST_30S=\$(journalctl -u rl-swarm --since "30 seconds ago" -o cat)
-    current_time=\$(date +%s)
+    LOG_LAST_30S=$(journalctl -u rl-swarm --since "30 seconds ago" -o cat 2>/dev/null || echo "")
+    current_time=$(date +%s)
     
-    if echo "\$LOG_LAST_30S" | grep -q "Joining round"; then
-        last_detect_time=\$current_time
+    if echo "$LOG_LAST_30S" | grep -q "Joining round"; then
+        last_detect_time=$current_time
         
-        # Reset index neu vuot qua 32 truoc khi dung
-        if (( CURRENT_INDEX > 32 )); then
+        # Reset index neu vuot qua MAX_FOLDER truoc khi dung
+        if (( CURRENT_INDEX > MAX_FOLDER )); then
             CURRENT_INDEX=1
         fi
         
-        echo "\$(date) - Phat hien Joining round, copy & restart voi folder \$CURRENT_INDEX"
-        copy_and_restart "\$CURRENT_INDEX"
+        echo "$(date) - Phat hien Joining round, copy & restart voi folder $CURRENT_INDEX"
+        copy_and_restart "$CURRENT_INDEX"
         ((CURRENT_INDEX++))
     else
         # Neu qua 10 phut khong phat hien Joining round thi chuyen index tiep
         if (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
-            echo "\$(date) - Khong phat hien Joining round trong 10 phut, chuyen sang thu muc \$CURRENT_INDEX"
+            echo "$(date) - Khong phat hien Joining round trong 10 phut, chuyen sang thu muc $CURRENT_INDEX"
             
-            # Reset index neu vuot qua 32 truoc khi dung
-            if (( CURRENT_INDEX > 32 )); then
+            # Reset index neu vuot qua MAX_FOLDER truoc khi dung
+            if (( CURRENT_INDEX > MAX_FOLDER )); then
                 CURRENT_INDEX=1
             fi
             
-            copy_and_restart "\$CURRENT_INDEX"
+            copy_and_restart "$CURRENT_INDEX"
             ((CURRENT_INDEX++))
-            last_detect_time=\$current_time
+            last_detect_time=$current_time
         fi
     fi
     
     sleep 20
 done
-EOF
+AUTORUN_EOF
+
+# Thay the $USER_HOME trong file auto.run
+sed -i "s|\$USER_HOME|$USER_HOME|g" "$USER_HOME/gensyn/run/auto.run"
 
 # Them quyen thuc thi
 chmod +x "$USER_HOME/gensyn/run/auto.run"
@@ -293,7 +386,7 @@ fi
 echo ""
 echo -e "\e[92mDe hoan tat chay: cd /root/rl-swarm && . .venv/bin/activate && ./run_first.sh\e[0m"
 echo ""
-echo -e "\e[92mDoi toi khi node bat dau trainnig thi dung lai, sau do chay service bang lenh ben duoi:\e[0m"
+echo -e "\e[92mDoi toi khi node bat dau training thi dung lai, sau do chay service bang lenh ben duoi:\e[0m"
 echo ""
 echo -e "\e[92msystemctl enable rl-swarm rl-swarm2 && systemctl restart rl-swarm2\e[0m"
 echo ""
