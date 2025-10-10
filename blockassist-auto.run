@@ -145,9 +145,9 @@ print_warning() {
 }
 
 # Define paths
-OVPN_SOURCE_DIR="/home/$(logname)/ovpn"
-OVPN_DEST_PATH="/home/$(logname)/.ovpn.ovpn"
-TOKEN_FILE="/home/$(logname)/gensyn/huggingface.token"
+OVPN_SOURCE_DIR="/root/ovpn"
+OVPN_DEST_PATH="/root/.ovpn.ovpn"
+TOKEN_FILE="/root/gensyn/huggingface.token"
 BLOCKASSIST_DIR="/root/blockassist"
 DEST_DIR="/root/blockassist/modal-login"
 LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
@@ -180,7 +180,7 @@ fi
 # Function to setup VPN
 setup_vpn() {
     local i=$1
-    local FOLDER_NAME=$(printf "%02d" "$i")
+    local FOLDER_NAME=$i
     local OVPN_FOLDER="$OVPN_SOURCE_DIR/$FOLDER_NAME"
     
     # Check if folder exists
@@ -208,8 +208,8 @@ setup_vpn() {
 # Function to copy training data
 copy_training_data() {
     local i=$1
-    local FOLDER_NAME=$(printf "%02d" "$i")
-    local SOURCE_DIR="/home/$(logname)/gensyn/$FOLDER_NAME/temp-data" 
+    local FOLDER_NAME=$i
+    local SOURCE_DIR="/root/gensyn/$FOLDER_NAME/temp-data" 
     if [ ! -d "$SOURCE_DIR" ]; then
         print_error "Thu muc nguon k ton tai: $SOURCE_DIR"
         return 1
@@ -222,7 +222,7 @@ copy_training_data() {
 # Function to run training
 run_training() {
     local i=$1
-    local FOLDER_NAME=$(printf "%02d" "$i")
+    local FOLDER_NAME=$i
     cd "$BLOCKASSIST_DIR"
     
     # Get token from file
@@ -287,7 +287,7 @@ process_range() {
     local end=$2
     
     for i in $(seq "$start" "$end"); do
-        FOLDER_NAME=$(printf "%02d" "$i")
+        FOLDER_NAME=$i
         TOKEN=$(echo "$TOKENS" | sed -n "${i}p")
 
         print_info "Xu ly folder $FOLDER_NAME (i = $i)"
