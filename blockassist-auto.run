@@ -1,354 +1,203 @@
-#!/bin/bash
-
-# Script tự động cài đặt blockassist - Phiên bản không dùng hàm
-set -e
-
-# Màu sắc cho output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${GREEN}[INFO]${NC} Bắt đầu quá trình cài đặt blockassist..."
-echo ""
-
-# ==================== BƯỚC 1: KIỂM TRA VÀ CLONE REPO ====================
-echo -e "${GREEN}[INFO]${NC} Bước 1: Kiểm tra repository blockassist..."
-
-if [ -d "blockassist" ]; then
-    echo -e "${YELLOW}[WARNING]${NC} Thư mục blockassist đã tồn tại, bỏ qua clone."
-    cd blockassist
-else
-    echo -e "${GREEN}[INFO]${NC} Clone repository blockassist..."
-    git clone https://github.com/hiepntnaa/blockassist
-    cd blockassist
-fi
-cp -r data-train data
-# ==================== BƯỚC 2: KIỂM TRA VÀ CÀI ĐẶT PYENV ====================
-echo -e "${GREEN}[INFO]${NC} Bước 2: Kiểm tra pyenv..."
-
-if command -v pyenv &> /dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} pyenv đã được cài đặt, phiên bản: $(pyenv --version)"
-else
-    if [ -d "$HOME/.pyenv" ]; then
-        echo -e "${YELLOW}[WARNING]${NC} Thư mục .pyenv đã tồn tại"
-    else
-        echo -e "${GREEN}[INFO]${NC} Clone pyenv repository..."
-        git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-    fi
-    
-    echo -e "${GREEN}[INFO]${NC} Cấu hình pyenv trong bashrc..."
-    
-    if ! grep -q "# pyenv configuration" ~/.bashrc; then
-        {
-            echo ''
-            echo '# pyenv configuration'
-            echo 'export PYENV_ROOT="$HOME/.pyenv"'
-            echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"'
-            echo 'eval "$(pyenv init --path)"'
-            echo 'eval "$(pyenv init -)"'
-        } >> ~/.bashrc
-        echo -e "${GREEN}[INFO]${NC} Đã thêm cấu hình pyenv vào ~/.bashrc"
-    else
-        echo -e "${YELLOW}[WARNING]${NC} Cấu hình pyenv đã tồn tại trong ~/.bashrc"
-    fi
-    
-    export PYENV_ROOT="$HOME/.pyenv"
-    export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init --path)"
-    eval "$(pyenv init -)"
-    
-    echo -e "${GREEN}[INFO]${NC} pyenv đã được cài đặt thành công!"
-fi
-
-# ==================== BƯỚC 3: KIỂM TRA VÀ CÀI ĐẶT PYTHON 3.10 ====================
-echo -e "${GREEN}[INFO]${NC} Bước 3: Kiểm tra Python 3.10..."
-
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init --path)" 2>/dev/null || true
-eval "$(pyenv init -)" 2>/dev/null || true
-
-if pyenv versions | grep -q "3.10"; then
-    echo -e "${YELLOW}[WARNING]${NC} Python 3.10 đã được cài đặt qua pyenv"
-    pyenv global 3.10
-else
-    echo -e "${GREEN}[INFO]${NC} Cài đặt Python 3.10..."
-    pyenv install 3.10
-    pyenv global 3.10
-    echo -e "${GREEN}[INFO]${NC} Python 3.10 đã được cài đặt thành công!"
-fi
-
-echo -e "${GREEN}[INFO]${NC} Phiên bản Python hiện tại: $(python --version)"
-
-# ==================== BƯỚC 4: CHẠY SETUP.SH NẾU CÓ ====================
-echo -e "${GREEN}[INFO]${NC} Bước 4: Kiểm tra setup.sh..."
-
-if [ -f "setup.sh" ]; then
-    if [ -x "setup.sh" ]; then
-        echo -e "${GREEN}[INFO]${NC} Chạy setup.sh..."
-        ./setup.sh
-    else
-        echo -e "${GREEN}[INFO]${NC} Cấp quyền thực thi cho setup.sh..."
-        chmod +x setup.sh
-        ./setup.sh
-    fi
-else
-    echo -e "${YELLOW}[WARNING]${NC} Không tìm thấy setup.sh, bỏ qua bước này."
-fi
-
-# ==================== BƯỚC 5: KIỂM TRA VÀ CÀI ĐẶT THỨ VIỆN PYTHON ====================
-echo -e "${GREEN}[INFO]${NC} Bước 5: Kiểm tra và cài đặt thư viện Python..."
-
-if python -c "import psutil" 2>/dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} Thư viện psutil đã được cài đặt"
-else
-    echo -e "${GREEN}[INFO]${NC} Cài đặt psutil..."
-    pip install psutil
-fi
-
-if python -c "import readchar" 2>/dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} Thư viện readchar đã được cài đặt"
-else
-    echo -e "${GREEN}[INFO]${NC} Cài đặt readchar..."
-    pip install readchar
-fi
-
-echo -e "${GREEN}[INFO]${NC} Tất cả thư viện đã được cài đặt!"
-
-# ==================== BƯỚC 6: TẠO FILE AUTO.RUN ====================
-echo -e "${GREEN}[INFO]${NC} Bước 6: Tạo file auto.run..."
-
-if [ -f "/root/blockassist/auto.run" ]; then
-    echo -e "${YELLOW}[WARNING]${NC} File auto.run đã tồn tại, ghi đè..."
-fi
-
-cat > /root/blockassist/auto.run << 'AUTORUN_EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-# Function to print colored output
-print_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-# Define paths
+# =====================[ GIỮ NGUYÊN THEO YÊU CẦU ]=====================
 OVPN_SOURCE_DIR="/root/ovpn"
 OVPN_DEST_PATH="/root/.ovpn.ovpn"
 TOKEN_FILE="/root/gensyn/huggingface.token"
 BLOCKASSIST_DIR="/root/blockassist"
 DEST_DIR="/root/blockassist/modal-login"
 LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
+# =====================================================================
 
-# Check if expect is installed
-if ! command -v expect &> /dev/null; then
-    apt-get update && apt-get install -y expect
-fi
+# =====================[ CẤU HÌNH BỔ SUNG ]============================
+VPN_UP_TIMEOUT="${VPN_UP_TIMEOUT:-30}"        # thời gian chờ VPN lên (giây)
+IFACE="${IFACE:-tun0}"                        # tên interface VPN
+KEEP_VPN_AFTER_JOB="${KEEP_VPN_AFTER_JOB:-false}"   # true: giữ kết nối sau mỗi job
+REQUIRE_IP_DIFF="${REQUIRE_IP_DIFF:-true}"    # true: IP qua VPN phải khác IP gốc
+EXPECT_IP_REGEX="${EXPECT_IP_REGEX:-}"        # nếu đặt, IP qua VPN phải khớp regex này (VD '^203\.0\.113\.')
+CURL_OPTS="${CURL_OPTS:--4 -s}"               # curl mặc định IPv4, silent
+RUN_PRIORITY=("auto.run" "run.py")            # ưu tiên runnable trong từng folder
+# =====================================================================
 
-# Get total number of valid tokens (excluding empty lines and comments)
-TOKENS=$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE")
-NUM_LINES=$(echo "$TOKENS" | wc -l)
+timestamp() { date '+%Y-%m-%d %H:%M:%S%z'; }
+log() { echo "[$(timestamp)] $*" | tee -a "$LOG_FILE"; }
 
-# Prompt for starting index with 5 second timeout
-print_warning "Nhap so thu tu bat dau (1-$NUM_LINES) [Mac dinh: 1 sau 5 giay]:"
-START_INDEX=""
-if read -t 5 START_INDEX; then
-    # Validate input
-    if [[ ! "$START_INDEX" =~ ^[0-9]+$ ]] || [ "$START_INDEX" -lt 1 ] || [ "$START_INDEX" -gt "$NUM_LINES" ]; then
-        print_warning "So khong hop le. Bat dau tu 1"
-        START_INDEX=1
+require() {
+  command -v "$1" >/dev/null 2>&1 || { log "[ERR] Thiếu lệnh bắt buộc: $1"; exit 1; }
+}
+
+ensure_env() {
+  mkdir -p "$DEST_DIR" "$BLOCKASSIST_DIR"
+  touch "$LOG_FILE" || { echo "[ERR] Không ghi được LOG_FILE: $LOG_FILE" >&2; exit 1; }
+  require curl; require ip; require sed; require awk; require openvpn
+}
+
+kill_openvpn_clients() {
+  pkill -f "openvpn --config" >/dev/null 2>&1 || true
+  # dọn PID file nếu bạn có dùng --writepid ở nơi khác
+}
+
+copy_profile() {
+  local src="$1"
+  cp -f "$src" "$OVPN_DEST_PATH"
+  chmod 600 "$OVPN_DEST_PATH"
+  log "[VPN] Đã copy profile: $src -> $OVPN_DEST_PATH"
+}
+
+bringup_vpn() {
+  local ovpn_path="$1"
+  copy_profile "$ovpn_path"
+
+  kill_openvpn_clients
+  sleep 1
+
+  # khởi động client ở background (daemon hóa bằng nohup để không lệ thuộc tty)
+  nohup openvpn --config "$OVPN_DEST_PATH" --log /var/log/openvpn-client.log >/dev/null 2>&1 &
+  log "[VPN] openvpn client started (log: /var/log/openvpn-client.log)"
+
+  # chờ interface xuất hiện
+  log "[VPN] Chờ interface $IFACE (tối đa ${VPN_UP_TIMEOUT}s)…"
+  for _ in $(seq 1 "$VPN_UP_TIMEOUT"); do
+    ip link show "$IFACE" >/dev/null 2>&1 && break
+    sleep 1
+  done
+  ip link show "$IFACE" >/dev/null 2>&1 || { log "[ERR] $IFACE chưa xuất hiện sau ${VPN_UP_TIMEOUT}s"; return 2; }
+
+  # kiểm tra default route qua IFACE
+  local defline
+  defline="$(ip route | sed -n '1p' || true)"
+  if ! grep -q " dev ${IFACE}" <<<"$defline"; then
+    log "[ERR] Default route chưa qua ${IFACE} (hiện tại: ${defline})"
+    log "      → Cần server push: \"redirect-gateway def1 bypass-dhcp\""
+    log "        hoặc thêm client-side: pull + redirect-gateway def1 autolocal"
+    return 3
+  fi
+
+  # đo IP qua VPN (khách quan) và default
+  IP_TUN="$(curl ${CURL_OPTS} --interface "$IFACE" https://ifconfig.me || true)"
+  IP_DEF="$(curl ${CURL_OPTS} https://ifconfig.me || true)"
+  log "[VPN] IP qua ${IFACE}: ${IP_TUN} ; IP default hiện tại: ${IP_DEF}"
+
+  # tiêu chí đạt
+  local ok_diff="yes" ok_regex="yes"
+  if [[ "${REQUIRE_IP_DIFF}" == "true" ]]; then
+    if [[ -z "${IP_BASE:-}" ]]; then
+      log "[WARN] IP_BASE chưa thiết lập; bỏ qua so sánh khác-biệt."
     else
-        print_info "Bat dau tu so: $START_INDEX"
+      if [[ -z "$IP_TUN" || "$IP_TUN" == "$IP_BASE" ]]; then
+        ok_diff="no"
+        log "[ERR] IP_TUN (${IP_TUN}) rỗng hoặc trùng IP gốc (${IP_BASE})"
+      fi
     fi
-else
-    print_warning "\nKhong co input. Bat dau tu 1"
-    START_INDEX=1
-fi
+  fi
+  if [[ -n "$EXPECT_IP_REGEX" ]]; then
+    if ! [[ "$IP_TUN" =~ $EXPECT_IP_REGEX ]]; then
+      ok_regex="no"
+      log "[ERR] IP_TUN (${IP_TUN}) không khớp EXPECT_IP_REGEX (${EXPECT_IP_REGEX})"
+    fi
+  fi
 
-# Function to setup VPN
-setup_vpn() {
-    local i=$1
-    local FOLDER_NAME=$i
-    local OVPN_FOLDER="$OVPN_SOURCE_DIR/$FOLDER_NAME"
-    
-    # Check if folder exists
-    if [ ! -d "$OVPN_FOLDER" ]; then
-        print_error "Thu muc VPN k ton tai: $OVPN_FOLDER"
-        return 1
-    fi
-    
-    # Find first .ovpn file in the folder
-    local OVPN_SOURCE_FILE=$(find "$OVPN_FOLDER" -maxdepth 1 -type f -name "*.ovpn" | head -n 1)
-    
-    if [ -z "$OVPN_SOURCE_FILE" ]; then
-        print_error "K tim thay file .ovpn nao trong: $OVPN_FOLDER"
-        return 1
-    fi
-    
-    print_info "Su dung file VPN: $OVPN_SOURCE_FILE"
-    cp "$OVPN_SOURCE_FILE" "$OVPN_DEST_PATH"
-    systemctl restart ovpn
-    sleep 5
-    ip=$(curl -4 ifconfig.me)
-    print_info "VPN da duoc thiet lap thanh cong cho folder $FOLDER_NAME. IP hien tai la $ip"
+  if [[ "$ok_diff" != "yes" || "$ok_regex" != "yes" ]]; then
+    log "[VPN] Tiêu chí KHÔNG đạt → bỏ qua job này."
+    return 4
+  fi
+
+  log "[VPN] Tiêu chí ĐẠT. VPN sẵn sàng."
+  return 0
 }
 
-# Function to copy training data
-copy_training_data() {
-    local i=$1
-    local FOLDER_NAME=$i
-    local SOURCE_DIR="/root/gensyn/$FOLDER_NAME/temp-data" 
-    if [ ! -d "$SOURCE_DIR" ]; then
-        print_error "Thu muc nguon k ton tai: $SOURCE_DIR"
-        return 1
+teardown_vpn() {
+  if [[ "${KEEP_VPN_AFTER_JOB}" == "true" ]]; then
+    log "[VPN] Giữ kết nối theo cấu hình (KEEP_VPN_AFTER_JOB=true)."
+    return 0
+  fi
+  kill_openvpn_clients
+  log "[VPN] Đã tắt kết nối."
+}
+
+export_token_if_any() {
+  if [[ -f "$TOKEN_FILE" ]]; then
+    local tok; tok="$(tr -d '\r\n' < "$TOKEN_FILE")"
+    if [[ -n "$tok" ]]; then
+      export HF_TOKEN="$tok"
+      export HUGGINGFACE_TOKEN="$tok"
+      log "[TOK] Đã export HF_TOKEN từ $TOKEN_FILE"
+    else
+      log "[TOK] $TOKEN_FILE rỗng, bỏ qua export."
     fi
-    # Copy data
-    rm -rf "$DEST_DIR/temp-data"
-    cp -r "$SOURCE_DIR"/ "$DEST_DIR/"
+  else
+    log "[TOK] Không tìm thấy TOKEN_FILE ($TOKEN_FILE), bỏ qua export."
+  fi
 }
 
-# Function to run training
-run_training() {
-    local i=$1
-    local FOLDER_NAME=$i
-    cd "$BLOCKASSIST_DIR"
-    
-    # Get token from file
-    if [ ! -f "$TOKEN_FILE" ]; then
-        print_error "File token k ton tai: $TOKEN_FILE"
-        return 1
+pick_runnable_and_run() {
+  local folder="$1"
+  local cmd=""
+  for candidate in "${RUN_PRIORITY[@]}"; do
+    if [[ -x "$folder/$candidate" ]]; then
+      cmd="./$candidate"
+      break
+    elif [[ -f "$folder/$candidate" && "$candidate" == "run.py" ]]; then
+      cmd="python3 run.py"
+      break
     fi
-    
-    # Get the specific line (token)
-    TOKEN=$(sed -n "${i}p" "$TOKEN_FILE")
-    if [ -z "$TOKEN" ]; then
-        print_error "K the lay token tu dong $i trong file $TOKEN_FILE"
-        return 1
+  done
+
+  if [[ -z "$cmd" ]]; then
+    log "[RUN] Không tìm thấy runnable trong $folder (auto.run/run.py). Bỏ qua."
+    return 127
+  fi
+
+  ( cd "$folder" && log "[RUN] ($folder) $cmd" && eval "$cmd" )
+}
+
+main() {
+  ensure_env
+  export_token_if_any
+
+  # ghi nhận IP gốc (trước VPN)
+  IP_BASE="$(curl ${CURL_OPTS} https://ifconfig.me || true)"
+  log "[BASE] IP gốc ban đầu: ${IP_BASE}"
+
+  # duyệt qua từng profile .ovpn trong OVPN_SOURCE_DIR (mỗi profile map 1 folder)
+  shopt -s nullglob
+  mapfile -t profiles < <(ls -1 "${OVPN_SOURCE_DIR}"/*.ovpn 2>/dev/null | sort)
+  if (( ${#profiles[@]} == 0 )); then
+    log "[ERR] Không tìm thấy profile .ovpn nào trong ${OVPN_SOURCE_DIR}"
+    exit 1
+  fi
+
+  for ovpn in "${profiles[@]}"; do
+    base="$(basename "$ovpn" .ovpn)"
+    job_folder="${BLOCKASSIST_DIR}/${base}"
+
+    log "====================[ JOB: ${base} ]===================="
+    log "[JOB] Profile: $ovpn"
+    log "[JOB] Folder : $job_folder"
+
+    if ! bringup_vpn "$ovpn"; then
+      log "[JOB] Bỏ qua do VPN chưa đạt yêu cầu."
+      continue
     fi
-    
-    # Create a temporary expect script to handle the interactive input
-    EXPECT_SCRIPT=$(mktemp)
-    cat > "$EXPECT_SCRIPT" << EOF
-#!/usr/bin/expect -f
-set timeout -1
-spawn python run.py
-expect {
-    "*token*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    "*Token*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    "*huggingface*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    "*HuggingFace*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    eof
-}
-EOF
-    chmod +x "$EXPECT_SCRIPT"
-    
-    # Run the script and log output
-    print_info "Bat dau chay training..."
-    {
-        echo "$(date)"
-        echo "Source: $FOLDER_NAME | IP: $ip"
-        "$EXPECT_SCRIPT" 2>&1
-        echo "=== Training completed at $(date) ==="
-    } | tee -a "$LOG_FILE"
-    
-    # Cleanup
-    rm -f "$EXPECT_SCRIPT"
-    
-    print_info "Training hoan thanh cho i = $i"
+
+    if [[ -d "$job_folder" ]]; then
+      # tạo thư mục đích nếu cần (bạn yêu cầu giữ DEST_DIR như cũ)
+      mkdir -p "$DEST_DIR"
+      # chạy job
+      set +e
+      pick_runnable_and_run "$job_folder"
+      rc=$?
+      set -e
+      log "[JOB] Kết thúc với mã thoát: $rc"
+    else
+      log "[JOB] Thư mục không tồn tại: $job_folder → bỏ qua."
+    fi
+
+    teardown_vpn
+  done
+
+  log "[ALL DONE] Hoàn tất toàn bộ vòng lặp."
 }
 
-# Function to process a range
-process_range() {
-    local start=$1
-    local end=$2
-    
-    for i in $(seq "$start" "$end"); do
-        FOLDER_NAME=$i
-        TOKEN=$(echo "$TOKENS" | sed -n "${i}p")
-
-        print_info "Xu ly folder $FOLDER_NAME (i = $i)"
-        
-        # Buoc 1: Setup VPN
-        if ! setup_vpn "$i"; then
-            print_error "Loi thiet lap VPN cho i = $i. Bo qua..."
-            continue
-        fi
-        
-        # Buoc 2: Copy training data
-        if ! copy_training_data "$i"; then
-            print_error "Loi copy data cho i = $i. Bo qua..."
-            continue
-        fi
-        
-        # Buoc 3: Run training
-        if ! run_training "$i"; then
-            print_error "Loi training cho i = $i. Tiep tuc voi folder tiep theo..."
-            continue
-        fi
-        
-        # Nghi ngau nhien tu 20–40 giay
-        SLEEP_TIME=$((RANDOM % 21 + 20))
-        echo "Sleep $SLEEP_TIME seconds" | tee -a "$LOG_FILE"
-        sleep $SLEEP_TIME
-    done
-}
-
-# Ghi log thoi gian bat dau
-echo "Auto training session started at $(date) | Starting from index: $START_INDEX" | tee -a "$LOG_FILE"
-
-# Chay tu START_INDEX den het
-if [ "$START_INDEX" -le "$NUM_LINES" ]; then
-    print_info "=== Chay tu $START_INDEX den $NUM_LINES ==="
-    process_range "$START_INDEX" "$NUM_LINES"
-fi
-
-# Neu START_INDEX > 1, chay tu 1 den START_INDEX-1
-if [ "$START_INDEX" -gt 1 ]; then
-    print_info "=== Quay lai chay tu 1 den $((START_INDEX - 1)) ==="
-    process_range 1 "$((START_INDEX - 1))"
-fi
-
-print_info "Hoan thanh tat ca! Xem logs: tail -f $LOG_FILE"
-AUTORUN_EOF
-
-chmod +x /root/blockassist/auto.run
-echo -e "${GREEN}[INFO]${NC} File auto.run đã được tạo tại /root/blockassist/auto.run"
-
-# ==================== HIỂN THỊ THÔNG TIN HOÀN TẤT ====================
-echo ""
-echo "=========================================="
-echo -e "${GREEN}[INFO]${NC} CÀI ĐẶT HOÀN TẤT!"
-echo "=========================================="
-echo ""
-echo -e "${GREEN}[INFO]${NC} Vị trí: $(pwd)"
-echo -e "${GREEN}[INFO]${NC} Python version: $(python --version)"
-echo -e "${GREEN}[INFO]${NC} Pyenv version: $(pyenv --version)"
-echo ""
-echo -e "${YELLOW}[WARNING]${NC} Lưu ý: Nếu đây là lần đầu cài đặt pyenv, hãy chạy:"
-echo "  source ~/.bashrc"
-echo "hoặc mở terminal mới để áp dụng cấu hình."
-echo ""
+main "$@"
