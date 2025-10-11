@@ -226,7 +226,7 @@ LimitNPROC=infinity" > /etc/systemd/system/openvpn-server@server.service.d/disab
 	else
 		# Else, OS must be Fedora
 		dnf install -y openvpn openssl ca-certificates tar $firewall
-	fi
+	endif
 	# If firewalld was just installed, enable it
 	if [[ "$firewall" == "firewalld" ]]; then
 		systemctl enable --now firewalld.service
@@ -251,6 +251,8 @@ LimitNPROC=infinity" > /etc/systemd/system/openvpn-server@server.service.d/disab
 	chmod o+x /etc/openvpn/server/
 	# Generate key for tls-crypt
 	openvpn --genkey secret /etc/openvpn/server/tc.key
+	chmod 600 /etc/openvpn/server/tc.key
+	chown root:root /etc/openvpn/server/tc.key
 	# Create the DH parameters file using the predefined ffdhe2048 group
 	echo '-----BEGIN DH PARAMETERS-----
 MIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
@@ -265,18 +267,15 @@ ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
 port $port
 proto $protocol
 dev tun
-ca ca.crt
-cert server.crt
-key server.key
-;dh none
-ecdh-curve prime256v1
+ca /etc/openvpn/server/ca.crt
+cert /etc/openvpn/server/server.crt
+key /etc/openvpn/server/server.key
+dh dh.pem
 auth SHA512
-tls-version-min 1.2
-data-ciphers AES-256-GCM:AES-128-GCM
-data-ciphers-fallback AES-256-CBC
-tls-crypt tc.key
+tls-crypt /etc/openvpn/server/tc.key
 topology subnet
-server 10.8.0.0 255.255.255.0" > /etc/openvpn/server/server.conf
+server 10.8.0.0 255.255.255.0
+duplicate-cn" > /etc/openvpn/server/server.conf
 	# IPv6
 	if [[ -z "$ip6" ]]; then
 		echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server/server.conf
@@ -336,8 +335,8 @@ crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 	echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-openvpn-forward.conf
 	if [[ -n "$ip6" ]]; then
 		echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.d/99-openvpn-forward.conf
-	fi
-	sysctl --system >/dev/null 2>&1 || true
+	endif
+	sysctl --system >/dev/null 2>/dev/null || true
 
 	if systemctl is-active --quiet firewalld.service; then
 		# Open port & trust VPN subnet
@@ -351,7 +350,7 @@ crl-verify crl.pem" >> /etc/openvpn/server/server.conf
 		if [[ -n "$ip6" ]]; then
 			firewall-cmd --zone=trusted --add-source=fddd:1194:1194:1194::/64
 			firewall-cmd --permanent --zone=trusted --add-source=fddd:1194:1194:1194::/64
-			# IPv6 typically doesn't need NAT; MASQUERADE for v6 is not applied here
+			# IPv6 typically doesn't need NAT
 		fi
 	else
 		# Create a service to set up persistent iptables rules
@@ -409,6 +408,19 @@ remote-cert-tls server
 auth SHA512
 ignore-unknown-option block-outside-dns
 verb 3" > /etc/openvpn/server/client-common.txt
+
+	# Migrate config to absolute paths & ensure tc.key exists
+	CONF="/etc/openvpn/server/server.conf"
+	if [[ ! -f /etc/openvpn/server/tc.key ]]; then
+		openvpn --genkey secret /etc/openvpn/server/tc.key
+		chmod 600 /etc/openvpn/server/tc.key
+		chown root:root /etc/openvpn/server/tc.key
+	fi
+	sed -i -E 's|^ca[[:space:]]+ca\.crt$|ca /etc/openvpn/server/ca.crt|' "$CONF"
+	sed -i -E 's|^cert[[:space:]]+server\.crt$|cert /etc/openvpn/server/server.crt|' "$CONF"
+	sed -i -E 's|^key[[:space:]]+server\.key$|key /etc/openvpn/server/server.key|' "$CONF"
+	sed -i -E 's|^tls-crypt[[:space:]]+tc\.key$|tls-crypt /etc/openvpn/server/tc.key|' "$CONF"
+
 	# Enable and start the OpenVPN service
 	systemctl enable --now openvpn-server@server.service
 	# Generates the custom client.ovpn
