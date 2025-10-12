@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script tự động cài đặt blockassist - Phiên bản không dùng hàm
+# Script tự động cài đặt blockassist - BẢN DÙNG PROXY, KHÔNG OVPN
 set -e
 
 # Màu sắc cho output
@@ -13,70 +13,84 @@ echo -e "${GREEN}[INFO]${NC} Bắt đầu quá trình cài đặt blockassist...
 echo ""
 
 # ==================== BƯỚC 1: KIỂM TRA VÀ CLONE REPO ====================
-echo -e "${GREEN}[INFO]${NC} Bước 1: Kiểm tra repository blockassist..."
+echo -e "${GREEN}[INFO]${NC} Bước 1: Kiểm tra và clone repo blockassist (nếu chưa có)..."
 
-if [ -d "blockassist" ]; then
-    echo -e "${YELLOW}[WARNING]${NC} Thư mục blockassist đã tồn tại, bỏ qua clone."
-    cd blockassist
+if [ ! -d "/root/blockassist" ]; then
+    echo -e "${GREEN}[INFO]${NC} Clone repo vào /root/blockassist"
+    mkdir -p /root
+    cd /root
+    # Nếu bạn có repo cụ thể, thay dòng dưới bằng git clone thật
+    # git clone https://github.com/<your>/blockassist.git
+    # Tạo thư mục trống để minh hoạ
+    mkdir -p /root/blockassist
 else
-    echo -e "${GREEN}[INFO]${NC} Clone repository blockassist..."
-    git clone https://github.com/hiepntnaa/blockassist
-    cd blockassist
+    echo -e "${YELLOW}[WARNING]${NC} Thư mục /root/blockassist đã tồn tại, bỏ qua bước clone."
 fi
-cp -r data-train data
-# ==================== BƯỚC 2: KIỂM TRA VÀ CÀI ĐẶT PYENV ====================
-echo -e "${GREEN}[INFO]${NC} Bước 2: Kiểm tra pyenv..."
 
-if command -v pyenv &> /dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} pyenv đã được cài đặt, phiên bản: $(pyenv --version)"
-else
-    if [ -d "$HOME/.pyenv" ]; then
-        echo -e "${YELLOW}[WARNING]${NC} Thư mục .pyenv đã tồn tại"
-    else
-        echo -e "${GREEN}[INFO]${NC} Clone pyenv repository..."
-        git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+cd /root/blockassist
+
+# Đảm bảo có file run.py (demo). Bạn thay bằng run.py thật của dự án bạn.
+if [ ! -f "run.py" ]; then
+cat > run.py <<'PYEOF'
+import os, sys, time
+print("Blockassist demo run.py -- sẽ hỏi token để mô phỏng login/upload.")
+try:
+    token = input("Enter your token: ").strip()
+except EOFError:
+    token = os.environ.get("HF_TOKEN","")
+print("Nhận token:", ("***" if token else "<trống>"))
+# mô phỏng quá trình upload
+print("Uploading to Hugging Face (demo)...")
+time.sleep(2)
+print("Done.")
+PYEOF
+fi
+
+# ==================== BƯỚC 2: CÀI PYENV (NẾU CHƯA CÓ) ====================
+echo -e "${GREEN}[INFO]${NC} Bước 2: Kiểm tra và cài pyenv (nếu chưa có)..."
+
+if ! command -v pyenv >/dev/null 2>&1; then
+    echo -e "${GREEN}[INFO]${NC} Cài đặt phụ thuộc cho pyenv..."
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev curl llvm libncursesw5-dev \
+        xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev ca-certificates git
+
+    echo -e "${GREEN}[INFO]${NC} Cài đặt pyenv..."
+    export HOME=/root
+    export PATH="/root/.pyenv/bin:/root/.pyenv/shims:/root/.pyenv/plugins/python-build/bin:$PATH"
+    if [ ! -d "/root/.pyenv" ]; then
+        git clone https://github.com/pyenv/pyenv.git /root/.pyenv
     fi
-    
-    echo -e "${GREEN}[INFO]${NC} Cấu hình pyenv trong bashrc..."
-    
-    if ! grep -q "# pyenv configuration" ~/.bashrc; then
+
+    # Thiết lập shell init
+    if ! grep -q 'pyenv init' /root/.bashrc 2>/dev/null; then
         {
-            echo ''
-            echo '# pyenv configuration'
-            echo 'export PYENV_ROOT="$HOME/.pyenv"'
-            echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"'
-            echo 'eval "$(pyenv init --path)"'
+            echo 'export PATH="/root/.pyenv/bin:$PATH"'
             echo 'eval "$(pyenv init -)"'
-        } >> ~/.bashrc
-        echo -e "${GREEN}[INFO]${NC} Đã thêm cấu hình pyenv vào ~/.bashrc"
-    else
-        echo -e "${YELLOW}[WARNING]${NC} Cấu hình pyenv đã tồn tại trong ~/.bashrc"
+        } >> /root/.bashrc
     fi
-    
-    export PYENV_ROOT="$HOME/.pyenv"
-    export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init --path)"
+    export PATH="/root/.pyenv/bin:$PATH"
     eval "$(pyenv init -)"
-    
-    echo -e "${GREEN}[INFO]${NC} pyenv đã được cài đặt thành công!"
+
+else
+    echo -e "${GREEN}[INFO]${NC} pyenv đã được cài đặt."
+    export PATH="/root/.pyenv/bin:$PATH"
+    eval "$(pyenv init -)"
 fi
 
-# ==================== BƯỚC 3: KIỂM TRA VÀ CÀI ĐẶT PYTHON 3.10 ====================
-echo -e "${GREEN}[INFO]${NC} Bước 3: Kiểm tra Python 3.10..."
+# ==================== BƯỚC 3: CÀI PYTHON 3.10 QUA PYENV ====================
+echo -e "${GREEN}[INFO]${NC} Bước 3: Cài/đặt Python 3.10 thông qua pyenv..."
 
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init --path)" 2>/dev/null || true
-eval "$(pyenv init -)" 2>/dev/null || true
-
-if pyenv versions | grep -q "3.10"; then
-    echo -e "${YELLOW}[WARNING]${NC} Python 3.10 đã được cài đặt qua pyenv"
-    pyenv global 3.10
-else
+if ! pyenv versions --bare | grep -q '^3\.10'; then
     echo -e "${GREEN}[INFO]${NC} Cài đặt Python 3.10..."
     pyenv install 3.10
     pyenv global 3.10
     echo -e "${GREEN}[INFO]${NC} Python 3.10 đã được cài đặt thành công!"
+else
+    pyenv global 3.10 || true
+    echo -e "${GREEN}[INFO]${NC} Python 3.10 đã có sẵn."
 fi
 
 echo -e "${GREEN}[INFO]${NC} Phiên bản Python hiện tại: $(python --version)"
@@ -97,26 +111,21 @@ else
     echo -e "${YELLOW}[WARNING]${NC} Không tìm thấy setup.sh, bỏ qua bước này."
 fi
 
-# ==================== BƯỚC 5: KIỂM TRA VÀ CÀI ĐẶT THỨ VIỆN PYTHON ====================
+# ==================== BƯỚC 5: CÀI THƯ VIỆN PYTHON CƠ BẢN ====================
 echo -e "${GREEN}[INFO]${NC} Bước 5: Kiểm tra và cài đặt thư viện Python..."
 
-if python -c "import psutil" 2>/dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} Thư viện psutil đã được cài đặt"
-else
-    echo -e "${GREEN}[INFO]${NC} Cài đặt psutil..."
-    pip install psutil
-fi
+python - <<'PIPCHK' || true
+import sys, subprocess
+def ensure(pkg):
+    try:
+        __import__(pkg)
+    except Exception:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+for m in ["psutil", "readchar"]:
+    ensure(m)
+PIPCHK
 
-if python -c "import readchar" 2>/dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} Thư viện readchar đã được cài đặt"
-else
-    echo -e "${GREEN}[INFO]${NC} Cài đặt readchar..."
-    pip install readchar
-fi
-
-echo -e "${GREEN}[INFO]${NC} Tất cả thư viện đã được cài đặt!"
-
-# ==================== BƯỚC 6: TẠO FILE AUTO.RUN ====================
+# ==================== BƯỚC 6: TẠO FILE auto.run (CHỈ DÙNG PROXY) ====================
 echo -e "${GREEN}[INFO]${NC} Bước 6: Tạo file auto.run..."
 
 if [ -f "/root/blockassist/auto.run" ]; then
@@ -133,19 +142,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Function to print colored output
-print_info() {
-    local msg="${1-}"
-    echo -e "${GREEN}[INFO]${NC} ${msg}"
-}
-print_error() {
-    local msg="${1-}"
-    echo -e "${RED}[ERROR]${NC} ${msg}"
-}
-print_warning() {
-    local msg="${1-}"
-    echo -e "${YELLOW}[WARNING]${NC} ${msg}"
-}
+# Logging helpers
+print_info()   { local msg="${1-}"; echo -e "${GREEN}[INFO]${NC} ${msg}"; }
+print_error()  { local msg="${1-}"; echo -e "${RED}[ERROR]${NC} ${msg}"; }
+print_warning(){ local msg="${1-}"; echo -e "${YELLOW}[WARNING]${NC} ${msg}"; }
 
 # Define paths
 TOKEN_FILE="/root/gensyn/huggingface.token"
@@ -153,10 +153,12 @@ BLOCKASSIST_DIR="/root/blockassist"
 DEST_DIR="/root/blockassist/modal-login"
 LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
 PROXY_LIST_FILE="${PROXY_LIST_FILE:-/root/gensyn/proxy.list}"
+
 CURRENT_PROXY=""
 CURRENT_IP=""
 
-# Read proxy for index from CSV: "i,proxy_url" (proxy_url already in standard scheme://user:pass@host:port format)
+# Read proxy for index from CSV: "i,proxy_url"
+# LƯU Ý: proxy_url phải ở dạng mà curl/git hiểu được (ví dụ: https://user:pass@IP:port hoặc socks5h://user:pass@IP:port)
 load_proxy_for_index() {
   local idx="${1-}"
   local line proxy_url
@@ -173,6 +175,7 @@ load_proxy_for_index() {
   echo "$proxy_url"
 }
 
+# Setup per-index proxy and measure public IP via that proxy
 setup_proxy() {
   local idx="${1-}"
   local proxy_url; proxy_url="$(load_proxy_for_index "$idx")"
@@ -192,20 +195,27 @@ setup_proxy() {
   print_info "Index $idx: dung PROXY=$CURRENT_PROXY -> PUBLIC_IP=$CURRENT_IP"
 }
 
-# Check if expect is installed
+# Ensure expect is present
 if ! command -v expect &> /dev/null; then
     apt-get update && apt-get install -y expect
 fi
 
-# Get total number of valid tokens (excluding empty lines and comments)
-TOKENS=$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE")
-NUM_LINES=$(echo "$TOKENS" | wc -l)
+# Get tokens (strip blank & comments)
+if [[ ! -f "$TOKEN_FILE" ]]; then
+    print_error "Khong tim thay TOKEN_FILE: $TOKEN_FILE"
+    exit 1
+fi
+TOKENS="$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE" || true)"
+NUM_LINES="$(echo "$TOKENS" | wc -l)"
+if [[ "$NUM_LINES" -eq 0 ]]; then
+    print_error "TOKEN_FILE khong co token hop le."
+    exit 1
+fi
 
-# Prompt for starting index with 5 second timeout
+# Prompt start index (timeout 5s)
 print_warning "Nhap so thu tu bat dau (1-$NUM_LINES) [Mac dinh: 1 sau 5 giay]:"
 START_INDEX=""
 if read -t 5 START_INDEX; then
-    # Validate input
     if [[ ! "$START_INDEX" =~ ^[0-9]+$ ]] || [ "$START_INDEX" -lt 1 ] || [ "$START_INDEX" -gt "$NUM_LINES" ]; then
         print_warning "So khong hop le. Bat dau tu 1"
         START_INDEX=1
@@ -217,37 +227,21 @@ else
     START_INDEX=1
 fi
 
-# Function to setup VPN
-    local i="${1-}"
-    local FOLDER_NAME=$i
-    
-    # Check if folder exists
-        return 1
-    fi
-    
-    
-        return 1
-    fi
-    
-    sleep 5
-    ip=$(curl -4 ifconfig.me)
-}
-
 # Function to copy training data
 copy_training_data() {
     local i="${1-}"
-    local FOLDER_NAME=$i
-    local SOURCE_DIR="/root/gensyn/$FOLDER_NAME/temp-data" 
-    if [ ! -d "$SOURCE_DIR" ]; then
+    local FOLDER_NAME="$i"
+    local SOURCE_DIR="/root/gensyn/$FOLDER_NAME/temp-data"
+    if [[ ! -d "$SOURCE_DIR" ]]; then
         print_error "Thu muc nguon k ton tai: $SOURCE_DIR"
         return 1
     fi
-    # Copy data
     rm -rf "$DEST_DIR/temp-data"
+    mkdir -p "$DEST_DIR"
     cp -r "$SOURCE_DIR"/ "$DEST_DIR/"
 }
 
-# Function to run training
+# Function to run training (per-process proxy)
 run_training() {
     local i="${1-}"
     cd "$BLOCKASSIST_DIR"
@@ -261,6 +255,7 @@ run_training() {
         print_error "Token dong $i khong hop le trong $TOKEN_FILE"; return 1
     fi
 
+    # Expect script
     EXPECT_SCRIPT="$(mktemp)"
     cat >"$EXPECT_SCRIPT" <<'EXP'
 #!/usr/bin/expect -f
@@ -281,7 +276,7 @@ EXP
     chmod +x "$EXPECT_SCRIPT"
 
     (
-      # Remove any bypass that could skip proxy
+      # Clear no_proxy to avoid bypass
       export NO_PROXY=""
       export no_proxy=""
 
@@ -293,6 +288,7 @@ EXP
         export https_proxy="$CURRENT_PROXY"
         export all_proxy="$CURRENT_PROXY"
 
+        # In case git/git-lfs is used under the hood for HF operations
         git config --global http.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
         git config --global https.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
       else
@@ -301,7 +297,7 @@ EXP
         git config --global --unset https.proxy >/dev/null 2>&1 || true
       fi
 
-      # Log the IP visible to remote services from THIS process
+      # Log public IP visible to this process
       UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 ${CURRENT_PROXY:+-x "$CURRENT_PROXY"} ifconfig.me 2>/dev/null || echo unknown)"
       echo "RUN[i=$i] $(date -Is) USING_PROXY=${CURRENT_PROXY:-none} PUBLIC_IP=$UPLOAD_VIA_IP" | tee -a "$LOG_FILE"
 
@@ -323,62 +319,62 @@ EXP
     print_info "Hoan tat training cho i=$i"
 }
 
-# Function to process a range
+# Process a range [start..end]
 process_range() {
     local start="${1-}"
     local end="${2-}"
-    
+
     for i in $(seq "$start" "$end"); do
-        FOLDER_NAME=$i
-        TOKEN=$(echo "$TOKENS" | sed -n "${i}p")
+        local FOLDER_NAME="$i"
+        local TOKEN_LINE
+        TOKEN_LINE="$(echo "$TOKENS" | sed -n "${i}p")"
 
         print_info "Xu ly folder $FOLDER_NAME (i = $i)"
-        
-        # Buoc 1: Setup VPN
+
+        # 1) Setup per-index proxy + log public IP
         if ! setup_proxy "$i"; then
             print_error "Loi thiet lap proxy cho i = $i. Bo qua..."
             continue
         fi
-        
-        # Buoc 2: Copy training data
+
+        # 2) Copy training data
         if ! copy_training_data "$i"; then
-            print_error "Loi copy data cho i = $i. Bo qua..."
+            print_error "Loi copy du lieu cho i = $i. Bo qua..."
             continue
         fi
-        
-        # Buoc 3: Run training
+
+        # 3) Run training (per-process proxy)
         if ! run_training "$i"; then
             print_error "Loi training cho i = $i. Tiep tuc voi folder tiep theo..."
             continue
         fi
-        
-        # Nghi ngau nhien tu 20–40 giay
+
+        # Random sleep 20–40s
         SLEEP_TIME=$((RANDOM % 21 + 20))
         echo "Sleep $SLEEP_TIME seconds" | tee -a "$LOG_FILE"
         sleep $SLEEP_TIME
     done
 }
 
-# Ghi log thoi gian bat dau
+# ===== MAIN =====
+mkdir -p "$(dirname "$LOG_FILE")"
 echo "Auto training session started at $(date) | Starting from index: $START_INDEX" | tee -a "$LOG_FILE"
 
-# Chay tu START_INDEX den het
-if [ "$START_INDEX" -le "$NUM_LINES" ]; then
+# Run from START_INDEX..NUM_LINES then (if START_INDEX>1) 1..START_INDEX-1
+if [[ "$START_INDEX" -le "$NUM_LINES" ]]; then
     print_info "=== Chay tu $START_INDEX den $NUM_LINES ==="
     process_range "$START_INDEX" "$NUM_LINES"
 fi
 
-# Neu START_INDEX > 1, chay tu 1 den START_INDEX-1
-if [ "$START_INDEX" -gt 1 ]; then
+if [[ "$START_INDEX" -gt 1 ]]; then
     print_info "=== Quay lai chay tu 1 den $((START_INDEX - 1)) ==="
     process_range 1 "$((START_INDEX - 1))"
 fi
 
-print_info "Hoan thanh tat ca! Xem logs: tail -f $LOG_FILE"
+print_info "Tat ca hoan tat."
 AUTORUN_EOF
 
 chmod +x /root/blockassist/auto.run
-echo -e "${GREEN}[INFO]${NC} File auto.run đã được tạo tại /root/blockassist/auto.run"
 
 # ==================== HIỂN THỊ THÔNG TIN HOÀN TẤT ====================
 echo ""
@@ -393,4 +389,7 @@ echo ""
 echo -e "${YELLOW}[WARNING]${NC} Lưu ý: Nếu đây là lần đầu cài đặt pyenv, hãy chạy:"
 echo "  source ~/.bashrc"
 echo "hoặc mở terminal mới để áp dụng cấu hình."
+echo ""
+echo -e "${GREEN}[INFO]${NC} Để chạy autorun:"
+echo "  cd /root/blockassist && ./auto.run"
 echo ""
