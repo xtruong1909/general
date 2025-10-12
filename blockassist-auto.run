@@ -158,7 +158,7 @@ CURRENT_IP=""
 
 # Read proxy for index from CSV: "i,proxy_url" (proxy_url already in standard scheme://user:pass@host:port format)
 load_proxy_for_index() {
-  local idx="$1"
+  local idx="${1-}"
   local line proxy_url
   if [[ ! -f "$PROXY_LIST_FILE" ]]; then
     print_warning "Khong tim thay $PROXY_LIST_FILE -> chay khong proxy."
@@ -174,7 +174,7 @@ load_proxy_for_index() {
 }
 
 setup_proxy() {
-  local idx="$1"
+  local idx="${1-}"
   local proxy_url; proxy_url="$(load_proxy_for_index "$idx")"
 
   if [[ -z "$proxy_url" ]]; then
@@ -249,7 +249,7 @@ copy_training_data() {
 
 # Function to run training
 run_training() {
-    local i="$1"
+    local i="${1-}"
     cd "$BLOCKASSIST_DIR"
 
     # Get token line i
