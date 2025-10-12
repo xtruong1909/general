@@ -145,12 +145,49 @@ print_warning() {
 }
 
 # Define paths
-OVPN_SOURCE_DIR="/root/ovpn"
-OVPN_DEST_PATH="/root/.ovpn.ovpn"
 TOKEN_FILE="/root/gensyn/huggingface.token"
 BLOCKASSIST_DIR="/root/blockassist"
 DEST_DIR="/root/blockassist/modal-login"
 LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
+PROXY_LIST_FILE="${PROXY_LIST_FILE:-/root/gensyn/proxy.list}"
+CURRENT_PROXY=""
+CURRENT_IP=""
+
+# Read proxy for index from CSV: "i,proxy_url" (proxy_url already in standard scheme://user:pass@host:port format)
+load_proxy_for_index() {
+  local idx="$1"
+  local line proxy_url
+  if [[ ! -f "$PROXY_LIST_FILE" ]]; then
+    print_warning "Khong tim thay $PROXY_LIST_FILE -> chay khong proxy."
+    echo ""; return 0
+  fi
+  line="$(awk -F',' -v i="$idx" '$0 !~ /^#/ && NF >= 2 {gsub(/^[ \t]+|[ \t]+$/, "", $1); if ($1 == i) {print $0; exit}}' "$PROXY_LIST_FILE")"
+  if [[ -z "$line" ]]; then
+    print_warning "Khong co proxy cho index $idx -> chay khong proxy."
+    echo ""; return 0
+  fi
+  proxy_url="$(echo "$line" | cut -d',' -f2- | sed 's/^[ \t]*//; s/[ \t]*$//')"
+  echo "$proxy_url"
+}
+
+setup_proxy() {
+  local idx="$1"
+  local proxy_url; proxy_url="$(load_proxy_for_index "$idx")"
+
+  if [[ -z "$proxy_url" ]]; then
+    CURRENT_PROXY=""
+    CURRENT_IP="$(curl -4 -sS --max-time 12 --retry 2 ifconfig.me 2>/dev/null || echo unknown)"
+    print_info "Index $idx: khong dung proxy, IP=$CURRENT_IP"
+    return 0
+  fi
+
+  CURRENT_PROXY="$proxy_url"
+  CURRENT_IP="$(curl -4 -sS --max-time 12 --retry 2 -x "$CURRENT_PROXY" ifconfig.me 2>/dev/null || echo unknown)"
+  if [[ "$CURRENT_IP" == "unknown" ]]; then
+    print_warning "Proxy $CURRENT_PROXY khong truy cap duoc ifconfig.me (kiem tra auth/whitelist)."
+  fi
+  print_info "Index $idx: dung PROXY=$CURRENT_PROXY -> PUBLIC_IP=$CURRENT_IP"
+}
 
 # Check if expect is installed
 if ! command -v expect &> /dev/null; then
@@ -178,31 +215,19 @@ else
 fi
 
 # Function to setup VPN
-setup_vpn() {
     local i=$1
     local FOLDER_NAME=$i
-    local OVPN_FOLDER="$OVPN_SOURCE_DIR/$FOLDER_NAME"
     
     # Check if folder exists
-    if [ ! -d "$OVPN_FOLDER" ]; then
-        print_error "Thu muc VPN k ton tai: $OVPN_FOLDER"
         return 1
     fi
     
-    # Find first .ovpn file in the folder
-    local OVPN_SOURCE_FILE=$(find "$OVPN_FOLDER" -maxdepth 1 -type f -name "*.ovpn" | head -n 1)
     
-    if [ -z "$OVPN_SOURCE_FILE" ]; then
-        print_error "K tim thay file .ovpn nao trong: $OVPN_FOLDER"
         return 1
     fi
     
-    print_info "Su dung file VPN: $OVPN_SOURCE_FILE"
-    cp "$OVPN_SOURCE_FILE" "$OVPN_DEST_PATH"
-    systemctl restart ovpn
     sleep 5
     ip=$(curl -4 ifconfig.me)
-    print_info "VPN da duoc thiet lap thanh cong cho folder $FOLDER_NAME. IP hien tai la $ip"
 }
 
 # Function to copy training data
@@ -221,64 +246,78 @@ copy_training_data() {
 
 # Function to run training
 run_training() {
-    local i=$1
-    local FOLDER_NAME=$i
+    local i="$1"
     cd "$BLOCKASSIST_DIR"
-    
-    # Get token from file
-    if [ ! -f "$TOKEN_FILE" ]; then
-        print_error "File token k ton tai: $TOKEN_FILE"
-        return 1
+
+    # Get token line i
+    if [[ ! -f "$TOKEN_FILE" ]]; then
+        print_error "File token k ton tai: $TOKEN_FILE"; return 1
     fi
-    
-    # Get the specific line (token)
-    TOKEN=$(sed -n "${i}p" "$TOKEN_FILE")
-    if [ -z "$TOKEN" ]; then
-        print_error "K the lay token tu dong $i trong file $TOKEN_FILE"
-        return 1
+    TOKEN="$(sed -n "${i}p" "$TOKEN_FILE" | sed 's/^[ \t]*//; s/[ \t]*$//')"
+    if [[ -z "$TOKEN" || "$TOKEN" =~ ^# ]]; then
+        print_error "Token dong $i khong hop le trong $TOKEN_FILE"; return 1
     fi
-    
-    # Create a temporary expect script to handle the interactive input
-    EXPECT_SCRIPT=$(mktemp)
-    cat > "$EXPECT_SCRIPT" << EOF
+
+    EXPECT_SCRIPT="$(mktemp)"
+    cat >"$EXPECT_SCRIPT" <<'EXP'
 #!/usr/bin/expect -f
 set timeout -1
 spawn python run.py
 expect {
-    "*token*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    "*Token*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    "*huggingface*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    "*HuggingFace*" {
-        send "$TOKEN\r"
-        exp_continue
-    }
-    eof
+  -re "(?i)token" {
+    send -- "$env(HF_TOKEN)\r"
+    exp_continue
+  }
+  "Too many requests" {
+    sleep 180
+    exp_continue
+  }
+  eof
 }
-EOF
+EXP
     chmod +x "$EXPECT_SCRIPT"
-    
-    # Run the script and log output
-    print_info "Bat dau chay training..."
-    {
-        echo "$(date)"
-        echo "Source: $FOLDER_NAME | IP: $ip"
-        "$EXPECT_SCRIPT" 2>&1
-        echo "=== Training completed at $(date) ==="
-    } | tee -a "$LOG_FILE"
-    
-    # Cleanup
+
+    (
+      # Remove any bypass that could skip proxy
+      export NO_PROXY=""
+      export no_proxy=""
+
+      if [[ -n "$CURRENT_PROXY" ]]; then
+        export HTTP_PROXY="$CURRENT_PROXY"
+        export HTTPS_PROXY="$CURRENT_PROXY"
+        export ALL_PROXY="$CURRENT_PROXY"
+        export http_proxy="$CURRENT_PROXY"
+        export https_proxy="$CURRENT_PROXY"
+        export all_proxy="$CURRENT_PROXY"
+
+        git config --global http.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
+        git config --global https.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
+      else
+        unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+        git config --global --unset http.proxy >/dev/null 2>&1 || true
+        git config --global --unset https.proxy >/dev/null 2>&1 || true
+      fi
+
+      # Log the IP visible to remote services from THIS process
+      UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 ${CURRENT_PROXY:+-x "$CURRENT_PROXY"} ifconfig.me 2>/dev/null || echo unknown)"
+      echo "RUN[i=$i] $(date -Is) USING_PROXY=${CURRENT_PROXY:-none} PUBLIC_IP=$UPLOAD_VIA_IP" | tee -a "$LOG_FILE"
+
+      export HF_TOKEN="$TOKEN"
+      cd "$BLOCKASSIST_DIR"
+      "$EXPECT_SCRIPT" 2>&1 | tee -a "$LOG_FILE"
+      RC=${PIPESTATUS[0]}
+
+      echo "END[i=$i] $(date -Is) USING_PROXY=${CURRENT_PROXY:-none} PUBLIC_IP=$UPLOAD_VIA_IP rc=$RC" | tee -a "$LOG_FILE"
+      exit $RC
+    )
+    rc=$?
+
     rm -f "$EXPECT_SCRIPT"
-    
-    print_info "Training hoan thanh cho i = $i"
+    if [[ $rc -ne 0 ]]; then
+        print_error "Training loi voi i=$i (rc=$rc)"
+        return $rc
+    fi
+    print_info "Hoan tat training cho i=$i"
 }
 
 # Function to process a range
@@ -293,7 +332,7 @@ process_range() {
         print_info "Xu ly folder $FOLDER_NAME (i = $i)"
         
         # Buoc 1: Setup VPN
-        if ! setup_vpn "$i"; then
+        if ! setup_proxy "$i"; then
             print_error "Loi thiet lap VPN cho i = $i. Bo qua..."
             continue
         fi
