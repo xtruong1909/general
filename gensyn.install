@@ -1,9 +1,6 @@
 #!/bin/bash
-
-# An toan hon: dừng khi lỗi, lỗi pipe, và biến chưa set
 set -euo pipefail
 
-# Xác định LOGNAME và USER_HOME bền vững khi chạy non-interactive
 LOGNAME=$(logname 2>/dev/null || true)
 if [ -z "${LOGNAME:-}" ]; then
   LOGNAME="${SUDO_USER:-root}"
@@ -11,14 +8,12 @@ fi
 if [ "$LOGNAME" = "root" ]; then
   USER_HOME="/root"
 else
-  USER_HOME="$(getent passwd "$LOGNAME" | cut -d: -f6)"
-  USER_HOME="${USER_HOME:-/home/$LOGNAME}"
+  USER_HOME="/home/$LOGNAME"
 fi
 
-# Tạo thư mục nếu chưa tồn tại
 mkdir -p "$USER_HOME/gensyn/run"
 
-# Tạo service rl-swarm
+# ===================== SERVICE: rl-swarm =====================
 cat << 'EOF' > /etc/systemd/system/rl-swarm.service
 [Unit]
 Description=RL Swarm Service
@@ -28,7 +23,6 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/root/rl-swarm
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=/bin/bash -lc 'source /root/rl-swarm/.venv/bin/activate && ./run_rl_swarm.sh'
 Restart=always
 RestartSec=5
@@ -41,7 +35,7 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
-# Tạo service rl-swarm2 (bake sẵn đường dẫn theo USER_HOME)
+# ===================== SERVICE: rl-swarm2 =====================
 cat << EOF > /etc/systemd/system/rl-swarm2.service
 [Unit]
 Description=Auto Run Gensyn Script
@@ -50,7 +44,7 @@ Wants=network-online.target
 
 [Service]
 User=root
-# Bảo đảm PATH cho yarn/node nếu cần
+WorkingDirectory=$USER_HOME
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:/root/.yarn/bin:/root/.config/yarn/global/node_modules/.bin
 ExecStart=$USER_HOME/gensyn/run/auto.run
 Restart=always
@@ -63,122 +57,58 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
-# Tạo file auto.run (ghi đè nếu đã tồn tại)
+# ===================== AUTO.RUN =====================
 cat << 'AUTORUN_EOF' > "$USER_HOME/gensyn/run/auto.run"
 #!/bin/bash
 set -euo pipefail
 
-# Thu muc chua du lieu goc
 BASE_DIR="$USER_HOME/gensyn/run"
-
-# Thu muc dich cua rl-swarm
 TARGET_DIR="/root/rl-swarm"
-
-# Thu muc con de copy temp-data
 LOGIN_SUBDIR="modal-login"
-
-# File chua danh sach bootnodes
 BOOTNODES_FILE="$BASE_DIR/bootnodes.txt"
-
-# File config YAML can sua
 CONFIG_FILE="$TARGET_DIR/rgym_exp/config/rg-swarm.yaml"
 
-# Tu dong tim so folder lon nhat
 MAX_FOLDER=$(find "$BASE_DIR" -maxdepth 1 -type d -name '[0-9]*' -printf '%f\n' | sort -n | tail -1)
-MAX_FOLDER=${MAX_FOLDER:-1}  # Mac dinh la 1 neu khong tim thay
-echo "$(date) - Phat hien co $MAX_FOLDER folder, se lap tu 1 den $MAX_FOLDER"
+MAX_FOLDER=${MAX_FOLDER:-1}
 
-# Ham chon ngau nhien mot bootnode va cap nhat vao config
 update_bootnode() {
-    if [ ! -f "$BOOTNODES_FILE" ]; then
-        echo "$(date) - CANH BAO: Khong tim thay file $BOOTNODES_FILE - giu nguyen gia tri cu"
-        return
-    fi
-    if [ ! -s "$BOOTNODES_FILE" ]; then
-        echo "$(date) - CANH BAO: File bootnode rong, dung bootnode cu"
-        return
-    fi
+  if [ -f "$BOOTNODES_FILE" ]; then
     RANDOM_BOOTNODE=$(grep -v '^[[:space:]]*$' "$BOOTNODES_FILE" | shuf -n 1 || true)
-    if [ -z "${RANDOM_BOOTNODE:-}" ]; then
-        echo "$(date) - CANH BAO: Khong lay duoc bootnode, dung bootnode cu"
-        return
-    fi
+    [ -z "$RANDOM_BOOTNODE" ] && return
     cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
     sed -i "/^[[:space:]]*-[[:space:]]*'\/ip4/c\    - '$RANDOM_BOOTNODE'" "$CONFIG_FILE"
     echo "$(date) - Bootnode: $RANDOM_BOOTNODE"
-    echo "$(date) - ============================================"
+  fi
 }
 
-# Ham copy file va restart
 copy_and_restart() {
-    local idx="$1"
-    local PEM_SOURCE="$BASE_DIR/$idx/swarm.pem"
-    local TEMP_SOURCE="$BASE_DIR/$idx/temp-data"
+  local idx="$1"
+  local PEM_SOURCE="$BASE_DIR/$idx/swarm.pem"
+  local TEMP_SOURCE="$BASE_DIR/$idx/temp-data"
 
-    if [ ! -f "$PEM_SOURCE" ]; then
-        echo "$(date) - LOI: Khong tim thay $PEM_SOURCE"
-        return 1
-    fi
-    if [ ! -d "$TEMP_SOURCE" ]; then
-        echo "$(date) - LOI: Khong tim thay $TEMP_SOURCE"
-        return 1
-    fi
+  if [ ! -f "$PEM_SOURCE" ]; then echo "Thiếu $PEM_SOURCE"; return 1; fi
+  if [ ! -d "$TEMP_SOURCE" ]; then echo "Thiếu $TEMP_SOURCE"; return 1; fi
 
-    systemctl stop rl-swarm
-    local count=0
-    while systemctl is-active --quiet rl-swarm && [ $count -lt 30 ]; do
-        sleep 1
-        ((count++))
-    done
+  systemctl stop rl-swarm || true
+  sleep 3
 
-    pkill -f "yarn start" 2>/dev/null || true
-    pkill -f "node.*modal-login" 2>/dev/null || true
-    sleep 3
+  rm -f "$TARGET_DIR/swarm.pem"
+  cp -f "$PEM_SOURCE" "$TARGET_DIR/"
 
-    rm -f "$TARGET_DIR/swarm.pem"
-    cp -f "$PEM_SOURCE" "$TARGET_DIR/"
+  mkdir -p "$TARGET_DIR/$LOGIN_SUBDIR/temp-data"
+  # Giữ apikey.json nếu source không có
+  if [ -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/apikey.json" ] && [ ! -f "$TEMP_SOURCE/apikey.json" ]; then
+    cp -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/apikey.json" "$TEMP_SOURCE/" || true
+  fi
 
-    rm -rf "$TARGET_DIR/$LOGIN_SUBDIR/temp-data"
-    mkdir -p "$TARGET_DIR/$LOGIN_SUBDIR"
-    cp -r "$TEMP_SOURCE" "$TARGET_DIR/$LOGIN_SUBDIR/"
+  rsync -a "$TEMP_SOURCE/" "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/" >/dev/null 2>&1 || \
+    cp -a "$TEMP_SOURCE/." "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/"
 
-    update_bootnode
-    systemctl start rl-swarm
-
-    # Cho userData.json xuat hien
-    local timeout=60
-    local elapsed=0
-    while [ ! -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json" ] && [ $elapsed -lt $timeout ]; do
-        sleep 5
-        ((elapsed+=5))
-    done
-    if [ ! -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json" ]; then
-        echo "$(date) - CANH BAO: userData.json khong xuat hien sau $timeout giay"
-        return 1
-    fi
-
-    # Lay ORG_ID tu userData.json (doc key cuoi cua dong dau tien co chuoi)
-    local ORG_ID
-    ORG_ID=$(awk 'BEGIN{FS="\""} !/^[ \t]*[{}]/ { print $(NF-1); exit }' "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json")
-
-    # Cho API key kich hoat (timeout 5 phut)
-    local api_timeout=300
-    local api_elapsed=0
-    while [ $api_elapsed -lt $api_timeout ]; do
-        STATUS=$(curl -s "http://localhost:3000/api/get-api-key-status?orgId=$ORG_ID" || echo "error")
-        if [[ "$STATUS" == "activated" ]]; then
-            break
-        else
-            sleep 5
-            ((api_elapsed+=5))
-        fi
-    done
-    if [ $api_elapsed -ge $api_timeout ]; then
-        echo "$(date) - CANH BAO: API key khong kich hoat sau $api_timeout giay"
-    fi
+  update_bootnode
+  systemctl start rl-swarm
 }
 
-echo "$(date) - Dung folder 1"
+echo "$(date) - Dùng folder 1"
 copy_and_restart 1
 
 CURRENT_INDEX=2
@@ -186,172 +116,28 @@ TIMEOUT_SECONDS=600
 last_detect_time=$(date +%s)
 
 while true; do
-    LOG_LAST_30S=$(journalctl -u rl-swarm --since "30 seconds ago" -o cat 2>/dev/null || echo "")
-    current_time=$(date +%s)
+  LOG_LAST_30S=$(journalctl -u rl-swarm --since "30 seconds ago" -o cat 2>/dev/null || echo "")
+  current_time=$(date +%s)
 
-    if echo "$LOG_LAST_30S" | grep -q "Joining round"; then
-        last_detect_time=$current_time
-        if (( CURRENT_INDEX > MAX_FOLDER )); then
-            CURRENT_INDEX=1
-        fi
-        echo "$(date) - Phat hien Joining round, copy & restart voi folder $CURRENT_INDEX"
-        copy_and_restart "$CURRENT_INDEX"
-        ((CURRENT_INDEX++))
-    else
-        if (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
-            echo "$(date) - Khong phat hien Joining round trong 10 phut, chuyen sang thu muc $CURRENT_INDEX"
-            if (( CURRENT_INDEX > MAX_FOLDER )); then
-                CURRENT_INDEX=1
-            fi
-            copy_and_restart "$CURRENT_INDEX"
-            ((CURRENT_INDEX++))
-            last_detect_time=$current_time
-        fi
-    fi
-
-    sleep 20
+  if echo "$LOG_LAST_30S" | grep -q "Joining round"; then
+    last_detect_time=$current_time
+    (( CURRENT_INDEX > MAX_FOLDER )) && CURRENT_INDEX=1
+    echo "$(date) - Phát hiện Joining round, copy & restart với folder $CURRENT_INDEX"
+    copy_and_restart "$CURRENT_INDEX"
+    ((CURRENT_INDEX++))
+  elif (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
+    (( CURRENT_INDEX > MAX_FOLDER )) && CURRENT_INDEX=1
+    echo "$(date) - Không thấy Joining round 10 phút, restart folder $CURRENT_INDEX"
+    copy_and_restart "$CURRENT_INDEX"
+    ((CURRENT_INDEX++))
+    last_detect_time=$current_time
+  fi
+  sleep 20
 done
 AUTORUN_EOF
 
-# Thay thế $USER_HOME trong file auto.run
 sed -i "s|\$USER_HOME|$USER_HOME|g" "$USER_HOME/gensyn/run/auto.run"
-
-# Thêm quyền thực thi
 chmod +x "$USER_HOME/gensyn/run/auto.run"
 
-# Reload systemd (cho các unit mới)
 systemctl daemon-reload
-
-# Cấu hình crontab cho root
-CRON_CMD="0 2,5,8,11,14,17,20,23 * * * systemctl restart rl-swarm2"
-CRON_COMMENT="# Auto restart rl-swarm2 every 3 hours"
-CURRENT_CRON=$(crontab -l 2>/dev/null || true)
-
-if echo "$CURRENT_CRON" | grep -qF "systemctl restart rl-swarm2"; then
-    UPDATED_CRON=$(echo "$CURRENT_CRON" | grep -vF "systemctl restart rl-swarm2" | grep -vF "Auto restart rl-swarm2")
-    if [ -z "$UPDATED_CRON" ]; then
-        (echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    else
-        (echo "$UPDATED_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    fi
-else
-    if [ -z "$CURRENT_CRON" ]; then
-        (echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    else
-        (echo "$CURRENT_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    fi
-fi
-
-echo "BAT DAU CAI DAT CAC PACKAGE CAN THIET"
-
-# Danh sach cac package can cai (BO 'python3.10-venv', dung 'python3-venv')
-PACKAGES="screen curl iptables build-essential git wget lz4 jq make gcc nano automake autoconf tmux htop nvme-cli libgbm1 pkg-config libssl-dev libleveldb-dev tar clang bsdmainutils ncdu unzip python3 python3-pip python3-venv"
-
-echo "Kiem tra cac package..."
-MISSING_PACKAGES=""
-for pkg in $PACKAGES; do
-    if ! dpkg -l | grep -q "^ii  $pkg "; then
-        MISSING_PACKAGES="$MISSING_PACKAGES $pkg"
-    fi
-done
-
-if [ -z "$MISSING_PACKAGES" ]; then
-    echo "Tat ca cac package da duoc cai dat!"
-else
-    echo "Cac package can cai dat:$MISSING_PACKAGES"
-    apt update
-    # Bổ sung universe nếu thiếu python3-venv
-    add-apt-repository -y universe >/dev/null 2>&1 || true
-    apt update
-    apt install -y $MISSING_PACKAGES
-    echo "Da cai dat xong cac package!"
-fi
-
-echo "KIEM TRA VA CAI DAT NODE.JS"
-
-# Kiem tra Node.js
-if command -v node &> /dev/null; then
-    NODE_VERSION=$(node -v)
-    NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'.' -f1 | sed 's/v//')
-    echo "Node.js da duoc cai dat: $NODE_VERSION"
-    if [ "$NODE_MAJOR" -lt 22 ]; then
-        echo "Phien ban Node.js qua cu, dang nang cap len v22..."
-        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-        apt-get install -y nodejs
-        echo "Da nang cap Node.js!"
-    else
-        echo "Phien ban Node.js phu hop, khong can nang cap."
-    fi
-else
-    echo "Node.js chua duoc cai dat, dang cai dat v22..."
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-    apt-get install -y nodejs
-    echo "Da cai dat Node.js!"
-fi
-
-# Kich hoat Corepack/Yarn (ổn định cho systemd hơn so với installer của Yarn)
-corepack enable >/dev/null 2>&1 || true
-corepack prepare yarn@stable --activate >/dev/null 2>&1 || true
-
-echo "KIEM TRA VA CAI DAT YARN"
-
-if command -v yarn &> /dev/null; then
-    YARN_VERSION=$(yarn -v)
-    echo "Yarn da duoc cai dat: v$YARN_VERSION"
-else
-    echo "Yarn chua duoc tim thay sau corepack, thu kich hoat lai..."
-    corepack enable >/dev/null 2>&1 || true
-    corepack prepare yarn@stable --activate >/dev/null 2>&1 || true
-    if command -v yarn &> /dev/null; then
-        echo "Da cai dat Yarn qua Corepack!"
-    else
-        echo "Khong the kich hoat Yarn qua Corepack, fallback installer..."
-        curl -o- -L https://yarnpkg.com/install.sh | bash
-        export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
-        if ! grep -q ".yarn/bin" ~/.bashrc; then
-            echo 'export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"' >> ~/.bashrc
-        fi
-        echo "Da cai dat Yarn (installer)."
-    fi
-fi
-
-# Xac dinh thu muc rl-swarm
-RL_SWARM_DIR="/root/rl-swarm"
-
-echo ""
-echo "KIEM TRA VA CLONE RL-SWARM"
-
-if [ -d "$RL_SWARM_DIR" ]; then
-    echo "Thu muc rl-swarm da ton tai tai: $RL_SWARM_DIR"
-    echo "Bo qua buoc git clone."
-else
-    echo "Thu muc rl-swarm chua ton tai, dang clone..."
-    cd /root
-    git clone https://github.com/hiepntnaa/rl-swarm/
-    echo "Da clone thanh cong rl-swarm!"
-fi
-
-echo ""
-echo "KIEM TRA VA TAO VIRTUAL ENVIRONMENT"
-
-# Kiem tra .venv trong rl-swarm
-if [ -d "$RL_SWARM_DIR/.venv" ]; then
-    echo "Virtual environment da ton tai tai: $RL_SWARM_DIR/.venv"
-else
-    echo "Virtual environment chua ton tai, dang tao..."
-    cd "$RL_SWARM_DIR"
-    python3 -m venv .venv
-    echo "Da tao thanh cong virtual environment!"
-fi
-
-# Tải bootnodes và cập nhật repo
-wget -O "$USER_HOME/gensyn/run/bootnodes.txt" https://raw.githubusercontent.com/hiepntnaa/general/refs/heads/main/bootnodes.txt
-cd "$RL_SWARM_DIR" && git fetch origin && git reset --hard origin/main
-
-echo ""
-echo -e "\e[92mDe hoan tat chay: cd /root/rl-swarm && . .venv/bin/activate && ./run_first.sh\e[0m"
-echo ""
-echo -e "\e[92mDoi toi khi node bat dau training thi dung lai, sau do chay service bang lenh ben duoi:\e[0m"
-echo ""
-echo -e "\e[92msystemctl enable rl-swarm rl-swarm2 && systemctl restart rl-swarm2\e[0m"
-echo ""
+echo "✅ auto.run đã được tạo với cơ chế giữ lại apikey.json."
