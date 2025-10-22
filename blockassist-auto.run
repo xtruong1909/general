@@ -4,7 +4,12 @@ set -euo pipefail
 # ========================================
 # BlockAssist Auto Runner - PROXY VERSION
 # ========================================
-# Cấu hình màu sắc hiển thị
+# Sử dụng HTTP Proxy thay vì OVPN
+# - 30 proxy cho 150 ví, xoay vòng tự động
+# - Nếu proxy lỗi, tự động thử proxy kế tiếp, tối đa 3 lần
+# ========================================
+
+# ====== Màu sắc ======
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,14 +19,15 @@ print_info()   { echo -e "${GREEN}[INFO]${NC} ${1-}"; }
 print_error()  { echo -e "${RED}[ERROR]${NC} ${1-}"; }
 print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}"; }
 
-# ================= Cấu hình đường dẫn =================
-TOKEN_FILE="/root/gensyn/huggingface.token"
-BLOCKASSIST_DIR="/root/blockassist"
-DEST_DIR="/root/blockassist/modal-login"
+# ====== Đường dẫn chính (dựa trên user hiện hành) ======
+USER_HOME="/home/$(logname)"
+TOKEN_FILE="$USER_HOME/gensyn/huggingface.token"
+BLOCKASSIST_DIR="$USER_HOME/blockassist"
+DEST_DIR="$BLOCKASSIST_DIR/modal-login"
 LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
-PROXY_LIST_FILE="${PROXY_LIST_FILE:-/root/gensyn/proxy.list}"
+PROXY_LIST_FILE="${PROXY_LIST_FILE:-$USER_HOME/gensyn/proxy.list}"
 
-# ===== Proxy pool configuration =====
+# ====== Cấu hình pool proxy ======
 PROXY_POOL_SIZE=${PROXY_POOL_SIZE:-30}     # 30 proxy cho 150 ví
 MAX_PROXY_TRIES=${MAX_PROXY_TRIES:-3}      # thử tối đa 3 lần nếu lỗi
 
@@ -139,7 +145,7 @@ fi
 # ===================== CÁC HÀM PHỤ TRỢ =====================
 copy_training_data() {
   local i="$1"
-  local SRC="/root/gensyn/$i/temp-data"
+  local SRC="$USER_HOME/gensyn/$i/temp-data"
   if [[ ! -d "$SRC" ]]; then
     print_error "Không có thư mục dữ liệu nguồn: $SRC"
     return 1
@@ -158,7 +164,6 @@ run_training() {
     return 1
   fi
 
-  # script expect automation
   EXPECT_SCRIPT="$(mktemp)"
   cat >"$EXPECT_SCRIPT" <<'EXP'
 #!/usr/bin/expect -f
