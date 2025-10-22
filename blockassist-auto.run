@@ -4,7 +4,7 @@ set -euo pipefail
 # ========================================
 # BlockAssist Auto Runner - PROXY VERSION
 # ========================================
-# Sử dụng HTTP Proxy thay vì OVPN
+# - Sử dụng HTTP Proxy thay vì OVPN
 # - 30 proxy cho 150 ví, xoay vòng tự động
 # - Nếu proxy lỗi, tự động thử proxy kế tiếp, tối đa 3 lần
 # ========================================
@@ -20,13 +20,19 @@ print_error()  { echo -e "${RED}[ERROR]${NC} ${1-}"; }
 print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}"; }
 
 # ====== Đường dẫn chính ======
+# Dữ liệu người dùng (proxy, token, temp-data) theo user xtr01
 TOKEN_FILE="/home/xtr01/gensyn/huggingface.token"
-PROXY_LIST_FILE="${PROXY_LIST_FILE:-/home/xtr01/gensyn/proxy.list}"
+PROXY_LIST_FILE="/home/xtr01/gensyn/proxy.list"
 
-# các thư mục dự án chính vẫn ở /root/
+# Code & log của dự án vẫn ở /root
 BLOCKASSIST_DIR="/root/blockassist"
 DEST_DIR="/root/blockassist/modal-login"
 LOG_FILE="/root/blockassist/LOG.log"
+
+# In debug path để xác nhận
+echo "[DEBUG] TOKEN_FILE=$TOKEN_FILE"
+echo "[DEBUG] PROXY_LIST_FILE=$PROXY_LIST_FILE"
+echo "[DEBUG] BLOCKASSIST_DIR=$BLOCKASSIST_DIR"
 
 # ====== Cấu hình pool proxy ======
 PROXY_POOL_SIZE=${PROXY_POOL_SIZE:-30}     # 30 proxy cho 150 ví
@@ -34,8 +40,13 @@ MAX_PROXY_TRIES=${MAX_PROXY_TRIES:-3}      # thử tối đa 3 lần nếu lỗi
 
 # ===================== HÀM XỬ LÝ PROXY =====================
 
-# Load proxy entry cho 1 slot (1..PROXY_POOL_SIZE)
-# File proxy dạng:  IP:PORT:USER:PASS  hoặc  INDEX,IP:PORT:USER:PASS
+# load_proxy_for_index(idx):
+# - Nhận 1 slot (1..PROXY_POOL_SIZE)
+# - Đọc từ PROXY_LIST_FILE:
+#     + Dạng "INDEX,IP:PORT:USER:PASS" (ưu tiên theo INDEX)
+#     + Hoặc dạng "IP:PORT:USER:PASS" (lấy dòng thứ idx, bỏ comment)
+# - Chuẩn hóa thành "http://user:pass@ip:port"
+# - In ra STDOUT CHỈ proxy_url hợp lệ (không in cảnh báo/lỗi)
 load_proxy_for_index() {
   local idx="$1"
   local line=""
@@ -43,27 +54,24 @@ load_proxy_for_index() {
     return 1
   fi
 
-  # tìm dòng theo chỉ số (nếu có INDEX,)
+  # Ưu tiên dạng "INDEX,<proxy>"
   line="$(awk -F',' -v i=\"$idx\" '$0 !~ /^#/ && NF>=2 {gsub(/^[ \t]+|[ \t]+$/,"",$1); if($1==i){print $0; exit}}' \"$PROXY_LIST_FILE\")"
   if [[ -z "$line" ]]; then
-    # fallback: lấy dòng thứ idx (bỏ comment)
+    # Fallback: lấy dòng thứ idx (bỏ comment)
     line="$(awk -v n=$idx 'BEGIN{c=0} $0 !~ /^#/ {c++; if(c==n){print $0; exit}}' \"$PROXY_LIST_FILE\")"
   fi
+  [[ -z "$line" ]] && return 1
 
-  if [[ -z "$line" ]]; then
-    return 1
-  fi
-
-  # nếu có dấu phẩy thì cắt phần sau
+  # Nếu có dấu phẩy thì lấy phần sau
   if [[ "$line" == *","* ]]; then
     line="$(echo "$line" | cut -d',' -f2- | sed 's/^[ \t]*//; s/[ \t]*$//')"
   fi
 
-  # chuẩn hóa: http://user:pass@ip:port
+  # Chuẩn hóa http://user:pass@ip:port
   local proxy_url="$line"
   if [[ "$line" != http://* && "$line" != https://* ]]; then
     IFS=':' read -r ip port user pass <<< "$line" || true
-    if [[ -n "$ip" && -n "$port" && -n "$user" && -n "$pass" ]]; then
+    if [[ -n "${ip:-}" && -n "${port:-}" && -n "${user:-}" && -n "${pass:-}" ]]; then
       proxy_url="http://$user:$pass@$ip:$port"
     fi
   fi
@@ -72,36 +80,45 @@ load_proxy_for_index() {
   return 0
 }
 
-# Thiết lập proxy cho ví tương ứng (tự động xoay vòng, thử lại khi lỗi)
+# setup_proxy(i):
+# - Map ví i -> slot start bằng modulo: start_slot = ((i-1)%PROXY_POOL_SIZE)+1
+# - Thử tối đa MAX_PROXY_TRIES proxy (xoay vòng trong pool bằng slot kế tiếp)
+# - Chỉ set CURRENT_PROXY nếu test curl -x thành công (ra IP != unknown)
+# - Cảnh báo in ra STDERR (>&2) để không lẫn vào CURRENT_PROXY
 setup_proxy() {
   local idx="$1"
   CURRENT_PROXY=""
   CURRENT_IP="unknown"
 
   local pool_size="$PROXY_POOL_SIZE"
+  if ! [[ "$pool_size" =~ ^[0-9]+$ ]] || [ "$pool_size" -le 0 ]; then
+    pool_size=30
+  fi
+
   local start_slot=$(( ((idx - 1) % pool_size) + 1 ))
   local tried=0
   local attempts=0
 
-  while [ $tried -lt $pool_size ] && [ $attempts -lt $MAX_PROXY_TRIES ]; do
+  while [[ $tried -lt $pool_size && $attempts -lt $MAX_PROXY_TRIES ]]; do
     local slot=$(( ((start_slot - 1 + tried) % pool_size) + 1 ))
-    local proxy="$(load_proxy_for_index "$slot")" || proxy=""
+    local proxy
+    proxy="$(load_proxy_for_index "$slot")" || proxy=""
+
     if [[ -z "$proxy" ]]; then
       tried=$((tried+1))
       continue
     fi
 
-    CURRENT_PROXY="$proxy"
+    # Test proxy
     local ip
-    ip="$(curl -4 -sS --max-time 10 -x "$CURRENT_PROXY" ifconfig.me 2>/dev/null || echo unknown)"
+    ip="$(curl -4 -sS --max-time 10 -x "$proxy" ifconfig.me 2>/dev/null || echo unknown)"
     if [[ "$ip" != "unknown" && -n "$ip" ]]; then
+      CURRENT_PROXY="$proxy"
       CURRENT_IP="$ip"
-      print_info "Index $idx: sử dụng PROXY=$CURRENT_PROXY → PUBLIC_IP=$CURRENT_IP (slot $slot)"
+      print_info "Index $idx: dùng PROXY=$CURRENT_PROXY → PUBLIC_IP=$CURRENT_IP (slot $slot)"
       return 0
     else
-      print_warning "Proxy slot $slot ($CURRENT_PROXY) lỗi → thử proxy kế tiếp (attempt $((attempts+1))/$MAX_PROXY_TRIES)"
-      CURRENT_PROXY=""
-      CURRENT_IP="unknown"
+      print_warning "Proxy slot $slot ($proxy) lỗi → thử tiếp (attempt $((attempts+1))/$MAX_PROXY_TRIES)" >&2
       tried=$((tried+1))
       attempts=$((attempts+1))
       sleep 1
@@ -109,9 +126,10 @@ setup_proxy() {
     fi
   done
 
+  # Fallback direct
   CURRENT_PROXY=""
   CURRENT_IP="$(curl -4 -sS --max-time 12 --retry 2 ifconfig.me 2>/dev/null || echo unknown)"
-  print_warning "Index $idx: tất cả proxy đều lỗi sau $attempts lần thử → fallback direct IP=$CURRENT_IP"
+  print_warning "Index $idx: hết proxy sau $attempts lần thử → dùng direct IP=$CURRENT_IP" >&2
   return 0
 }
 
@@ -122,10 +140,16 @@ if [[ ! -f "$TOKEN_FILE" ]]; then
 fi
 
 TOKENS="$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE" || true)"
-NUM_LINES="$(echo "$TOKENS" | wc -l)"
-if [[ "$NUM_LINES" -eq 0 ]]; then
+NUM_LINES="$(echo "$TOKENS" | wc -l || echo 0)"
+if [[ "${NUM_LINES:-0}" -le 0 ]]; then
   print_error "TOKEN_FILE không có token hợp lệ."
   exit 1
+fi
+
+# Đảm bảo 'expect' có sẵn
+if ! command -v expect >/dev/null 2>&1; then
+  print_warning "Thiếu gói 'expect' → cài đặt..."
+  apt-get update -y && apt-get install -y expect
 fi
 
 # ===================== CHỌN INDEX BẮT ĐẦU =====================
@@ -165,6 +189,7 @@ run_training() {
     return 1
   fi
 
+  local EXPECT_SCRIPT
   EXPECT_SCRIPT="$(mktemp)"
   cat >"$EXPECT_SCRIPT" <<'EXP'
 #!/usr/bin/expect -f
@@ -186,17 +211,30 @@ EXP
 
   (
     export HF_TOKEN="$TOKEN"
-    export HTTP_PROXY="$CURRENT_PROXY"
-    export HTTPS_PROXY="$CURRENT_PROXY"
-    export ALL_PROXY="$CURRENT_PROXY"
-    export http_proxy="$CURRENT_PROXY"
-    export https_proxy="$CURRENT_PROXY"
-    export all_proxy="$CURRENT_PROXY"
 
-    git config --global http.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
-    git config --global https.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
+    # Set/Unset proxy env
+    if [[ -n "${CURRENT_PROXY:-}" ]]; then
+      export HTTP_PROXY="$CURRENT_PROXY"
+      export HTTPS_PROXY="$CURRENT_PROXY"
+      export ALL_PROXY="$CURRENT_PROXY"
+      export http_proxy="$CURRENT_PROXY"
+      export https_proxy="$CURRENT_PROXY"
+      export all_proxy="$CURRENT_PROXY"
+      git config --global http.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
+      git config --global https.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
+    else
+      unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy || true
+      git config --global --unset http.proxy >/dev/null 2>&1 || true
+      git config --global --unset https.proxy >/dev/null 2>&1 || true
+    fi
 
-    UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 ${CURRENT_PROXY:+-x "$CURRENT_PROXY"} ifconfig.me 2>/dev/null || echo unknown)"
+    local UPLOAD_VIA_IP
+    if [[ -n "${CURRENT_PROXY:-}" ]]; then
+      UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 -x "$CURRENT_PROXY" ifconfig.me 2>/dev/null || echo unknown)"
+    else
+      UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 ifconfig.me 2>/dev/null || echo unknown)"
+    fi
+
     echo "RUN[i=$i] $(date -Is) USING_PROXY=${CURRENT_PROXY:-none} PUBLIC_IP=$UPLOAD_VIA_IP" | tee -a "$LOG_FILE"
 
     cd "$BLOCKASSIST_DIR"
