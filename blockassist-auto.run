@@ -19,13 +19,15 @@ print_info()   { echo -e "${GREEN}[INFO]${NC} ${1-}"; }
 print_error()  { echo -e "${RED}[ERROR]${NC} ${1-}"; }
 print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}"; }
 
-# ====== Đường dẫn chính (dựa trên user hiện hành) ======
+# ====== Đường dẫn chính ======
 USER_HOME="/home/$(logname)"
 TOKEN_FILE="$USER_HOME/gensyn/huggingface.token"
-BLOCKASSIST_DIR="$USER_HOME/blockassist"
-DEST_DIR="$BLOCKASSIST_DIR/modal-login"
-LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
 PROXY_LIST_FILE="${PROXY_LIST_FILE:-$USER_HOME/gensyn/proxy.list}"
+
+# các thư mục dự án chính vẫn ở /root/
+BLOCKASSIST_DIR="/root/blockassist"
+DEST_DIR="/root/blockassist/modal-login"
+LOG_FILE="/root/blockassist/LOG.log"
 
 # ====== Cấu hình pool proxy ======
 PROXY_POOL_SIZE=${PROXY_POOL_SIZE:-30}     # 30 proxy cho 150 ví
