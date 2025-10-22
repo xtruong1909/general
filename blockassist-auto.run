@@ -17,36 +17,27 @@ NC='\033[0m'
 
 print_info()   { echo -e "${GREEN}[INFO]${NC} ${1-}"; }
 print_error()  { echo -e "${RED}[ERROR]${NC} ${1-}"; }
-print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}"; }
+print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}" >&2; }
 
 # ====== Đường dẫn chính ======
-# Dữ liệu người dùng (proxy, token, temp-data) theo user xtr01
 TOKEN_FILE="/home/xtr01/gensyn/huggingface.token"
 PROXY_LIST_FILE="/home/xtr01/gensyn/proxy.list"
-
-# Code & log của dự án vẫn ở /root
 BLOCKASSIST_DIR="/root/blockassist"
 DEST_DIR="/root/blockassist/modal-login"
 LOG_FILE="/root/blockassist/LOG.log"
 
-# In debug path để xác nhận
+# Debug xác nhận đường dẫn
 echo "[DEBUG] TOKEN_FILE=$TOKEN_FILE"
 echo "[DEBUG] PROXY_LIST_FILE=$PROXY_LIST_FILE"
 echo "[DEBUG] BLOCKASSIST_DIR=$BLOCKASSIST_DIR"
 
 # ====== Cấu hình pool proxy ======
-PROXY_POOL_SIZE=${PROXY_POOL_SIZE:-30}     # 30 proxy cho 150 ví
-MAX_PROXY_TRIES=${MAX_PROXY_TRIES:-3}      # thử tối đa 3 lần nếu lỗi
+PROXY_POOL_SIZE=30
+MAX_PROXY_TRIES=3
 
 # ===================== HÀM XỬ LÝ PROXY =====================
 
-# load_proxy_for_index(idx):
-# - Nhận 1 slot (1..PROXY_POOL_SIZE)
-# - Đọc từ PROXY_LIST_FILE:
-#     + Dạng "INDEX,IP:PORT:USER:PASS" (ưu tiên theo INDEX)
-#     + Hoặc dạng "IP:PORT:USER:PASS" (lấy dòng thứ idx, bỏ comment)
-# - Chuẩn hóa thành "http://user:pass@ip:port"
-# - In ra STDOUT CHỈ proxy_url hợp lệ (không in cảnh báo/lỗi)
+# Load proxy entry cho 1 slot (1..PROXY_POOL_SIZE)
 load_proxy_for_index() {
   local idx="$1"
   local line=""
@@ -57,7 +48,7 @@ load_proxy_for_index() {
   # Ưu tiên dạng "INDEX,<proxy>"
   line="$(awk -F',' -v i=\"$idx\" '$0 !~ /^#/ && NF>=2 {gsub(/^[ \t]+|[ \t]+$/,"",$1); if($1==i){print $0; exit}}' \"$PROXY_LIST_FILE\")"
   if [[ -z "$line" ]]; then
-    # Fallback: lấy dòng thứ idx (bỏ comment)
+    # fallback: lấy dòng thứ idx (bỏ comment)
     line="$(awk -v n=$idx 'BEGIN{c=0} $0 !~ /^#/ {c++; if(c==n){print $0; exit}}' \"$PROXY_LIST_FILE\")"
   fi
   [[ -z "$line" ]] && return 1
@@ -67,7 +58,7 @@ load_proxy_for_index() {
     line="$(echo "$line" | cut -d',' -f2- | sed 's/^[ \t]*//; s/[ \t]*$//')"
   fi
 
-  # Chuẩn hóa http://user:pass@ip:port
+  # Chuẩn hóa dạng http://user:pass@ip:port
   local proxy_url="$line"
   if [[ "$line" != http://* && "$line" != https://* ]]; then
     IFS=':' read -r ip port user pass <<< "$line" || true
@@ -80,21 +71,13 @@ load_proxy_for_index() {
   return 0
 }
 
-# setup_proxy(i):
-# - Map ví i -> slot start bằng modulo: start_slot = ((i-1)%PROXY_POOL_SIZE)+1
-# - Thử tối đa MAX_PROXY_TRIES proxy (xoay vòng trong pool bằng slot kế tiếp)
-# - Chỉ set CURRENT_PROXY nếu test curl -x thành công (ra IP != unknown)
-# - Cảnh báo in ra STDERR (>&2) để không lẫn vào CURRENT_PROXY
+# Thiết lập proxy cho ví tương ứng (xoay vòng + retry)
 setup_proxy() {
   local idx="$1"
   CURRENT_PROXY=""
   CURRENT_IP="unknown"
 
   local pool_size="$PROXY_POOL_SIZE"
-  if ! [[ "$pool_size" =~ ^[0-9]+$ ]] || [ "$pool_size" -le 0 ]; then
-    pool_size=30
-  fi
-
   local start_slot=$(( ((idx - 1) % pool_size) + 1 ))
   local tried=0
   local attempts=0
@@ -118,7 +101,7 @@ setup_proxy() {
       print_info "Index $idx: dùng PROXY=$CURRENT_PROXY → PUBLIC_IP=$CURRENT_IP (slot $slot)"
       return 0
     else
-      print_warning "Proxy slot $slot ($proxy) lỗi → thử tiếp (attempt $((attempts+1))/$MAX_PROXY_TRIES)" >&2
+      print_warning "Proxy slot $slot ($proxy) lỗi → thử proxy kế tiếp (attempt $((attempts+1))/$MAX_PROXY_TRIES)"
       tried=$((tried+1))
       attempts=$((attempts+1))
       sleep 1
@@ -126,10 +109,10 @@ setup_proxy() {
     fi
   done
 
-  # Fallback direct
+  # fallback direct
   CURRENT_PROXY=""
   CURRENT_IP="$(curl -4 -sS --max-time 12 --retry 2 ifconfig.me 2>/dev/null || echo unknown)"
-  print_warning "Index $idx: hết proxy sau $attempts lần thử → dùng direct IP=$CURRENT_IP" >&2
+  print_warning "Index $idx: hết proxy sau $attempts lần thử → dùng direct IP=$CURRENT_IP"
   return 0
 }
 
@@ -212,7 +195,6 @@ EXP
   (
     export HF_TOKEN="$TOKEN"
 
-    # Set/Unset proxy env
     if [[ -n "${CURRENT_PROXY:-}" ]]; then
       export HTTP_PROXY="$CURRENT_PROXY"
       export HTTPS_PROXY="$CURRENT_PROXY"
