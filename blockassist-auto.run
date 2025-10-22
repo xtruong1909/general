@@ -20,9 +20,8 @@ print_error()  { echo -e "${RED}[ERROR]${NC} ${1-}"; }
 print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}"; }
 
 # ====== Đường dẫn chính ======
-USER_HOME="/home/$(logname)"
-TOKEN_FILE="$USER_HOME/gensyn/huggingface.token"
-PROXY_LIST_FILE="${PROXY_LIST_FILE:-$USER_HOME/gensyn/proxy.list}"
+TOKEN_FILE="/home/xtr01/gensyn/huggingface.token"
+PROXY_LIST_FILE="${PROXY_LIST_FILE:-/home/xtr01/gensyn/proxy.list}"
 
 # các thư mục dự án chính vẫn ở /root/
 BLOCKASSIST_DIR="/root/blockassist"
@@ -147,7 +146,7 @@ fi
 # ===================== CÁC HÀM PHỤ TRỢ =====================
 copy_training_data() {
   local i="$1"
-  local SRC="$USER_HOME/gensyn/$i/temp-data"
+  local SRC="/home/xtr01/gensyn/$i/temp-data"
   if [[ ! -d "$SRC" ]]; then
     print_error "Không có thư mục dữ liệu nguồn: $SRC"
     return 1
