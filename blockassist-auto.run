@@ -1,5 +1,5 @@
 #!/bin/bash
-# install-blockassist.sh — cài đặt 6 bước + tự tạo /root/blockassist/auto.run
+# install-blockassist.sh — cài đặt 6 bước + sinh /root/blockassist/auto.run (ổn định vòng lặp)
 set -euo pipefail
 
 # ==== Màu + logging ====
@@ -92,14 +92,14 @@ USER_NAME="$(logname 2>/dev/null || echo xtr01)"
 PROXY_LIST="/home/$USER_NAME/gensyn/proxy.list"
 if [ -f "$PROXY_LIST" ]; then
   log "Phát hiện proxy.list tại: $PROXY_LIST (top 3):"
-  head -n 3 "$PROXY_LIST" | sed 's/^/  - /' | tee -a "$LOG_FILE"
+  grep -vE '^\s*(#|$)' "$PROXY_LIST" | head -n 3 | sed 's/^/  - /' | tee -a "$LOG_FILE"
   FIRST_PROXY="$(grep -vE '^\s*#|^\s*$' "$PROXY_LIST" | head -n1 || true)"
   if [ -n "$FIRST_PROXY" ]; then
     IFS=':' read -r ip port user pass <<<"$FIRST_PROXY"
     PROXY_URL="socks5h://$user:$pass@$ip:$port"
     TEST_IP="$(curl -sS --max-time 8 --socks5-hostname "$PROXY_URL" https://ifconfig.me/ip || true)"
     if [ -n "$TEST_IP" ]; then
-      log "Proxy test OK → OUT IP: $TEST_IP (qua $ip:$port)"
+      log "Proxy test OK → OUT IP: $TEST_IP (via $ip:$port)"
     else
       warn "Proxy test FAIL (không lấy được IP)."
     fi
@@ -111,18 +111,21 @@ else
 fi
 
 # ==================== BƯỚC 6: TẠO /root/blockassist/auto.run ====================
-log "Bước 6: Tạo /root/blockassist/auto.run (train/tx = IP gốc; upload HF = qua proxy)…"
+log "Bước 6: Tạo /root/blockassist/auto.run (train/tx = IP gốc; upload HF = qua proxy; chống treo)…"
 mkdir -p /root/blockassist
 [ -f /root/blockassist/auto.run ] && warn "Ghi đè /root/blockassist/auto.run"
 tee /root/blockassist/auto.run >/dev/null <<'AUTORUN_EOF'
 #!/bin/bash
 set -euo pipefail
+# bỏ qua tín hiệu kill từ tiến trình con (run.py) để không dừng vòng lặp
+trap ":" TERM HUP INT
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 print_info(){ echo -e "${GREEN}[INFO]${NC} $1"; }
 print_warn(){ echo -e "${YELLOW}[WARN]${NC} $1"; }
 print_err(){ echo -e "${RED}[ERROR]${NC} $1"; }
 
-USER_NAME="$(logname 2>/dev/null || echo xtr01)"
+USER_NAME="${USER_NAME:-$(logname 2>/dev/null || echo xtr01)}"
 TOKEN_FILE="/home/$USER_NAME/gensyn/huggingface.token"
 PROXY_FILE="/home/$USER_NAME/gensyn/proxy.list"   # ip:port:user:pass
 BLOCKASSIST_DIR="/root/blockassist"
@@ -131,7 +134,7 @@ LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
 
 command -v expect >/dev/null || (apt-get update && apt-get install -y expect)
 
-# Quan trọng: train/tx không dùng proxy
+# Quan trọng: train/tx không dùng proxy (đảm bảo localhost & Alchemy dùng IP gốc VPS)
 unset ALL_PROXY all_proxy HTTPS_PROXY https_proxy HTTP_PROXY http_proxy NO_PROXY no_proxy || true
 
 # Token
@@ -170,7 +173,8 @@ train_one(){
   tee "$exp" >/dev/null <<EOF
 #!/usr/bin/expect -f
 set timeout -1
-spawn python run.py
+# TÁCH SESSION: run.py chạy trong session riêng, cleanup của nó không giết vòng lặp cha
+spawn bash -lc "setsid -w python run.py"
 expect {
   "*token*"        { send "$tok\r"; exp_continue }
   "*Token*"        { send "$tok\r"; exp_continue }
@@ -183,7 +187,8 @@ EOF
   print_info "Training (IP gốc) profile=$i"
   {
     echo "----- $(date) -----"; echo "Profile: $i"
-    set +e; "$exp" 2>&1; rc=$?; set -e
+    # CHỐNG TREO: timeout 45 phút, foreground để nhận tín hiệu đúng
+    set +e; timeout --foreground 2700 "$exp" 2>&1; rc=$?; set -e
     echo "=== Training rc=$rc at $(date) ==="
   } | tee -a "$LOG_FILE"
   rm -f "$exp"
@@ -218,7 +223,7 @@ except Exception as e:
   print("[HF-UP] Upload fail:",e, file=sys.stderr); sys.exit(4)
 PY
 
-  print_info "Upload HF qua proxy=$raw OUT_IP=$ip (profile=$i)"
+  print_info "Upload HF qua proxy=${raw} OUT_IP=${ip} (profile=$i)"
   with_proxy "$raw" -- HF_TOKEN_INLINE="$tok" HF_SRC_DIR="$SRC" HF_PROFILE_INDEX="$i" \
     python "$tmp" 2>&1 | tee -a "$LOG_FILE"
   rc=${PIPESTATUS[0]}
@@ -251,7 +256,9 @@ process_range(){
         print_warn "Proxy không khả dụng (i=$i): ${raw} → bỏ qua upload"
       fi
     fi
-    sl=$((RANDOM % 21 + 20)); echo "Sleep ${sl}s" | tee -a "$LOG_FILE"; sleep "$sl"
+    sl=$((RANDOM % 21 + 20))
+    echo "[LOOP] Hoàn tất profile $i → ngủ ${sl}s" | tee -a "$LOG_FILE"
+    sleep "$sl"
   done
 }
 
@@ -263,6 +270,5 @@ AUTORUN_EOF
 chmod +x /root/blockassist/auto.run
 log "ĐÃ TẠO: /root/blockassist/auto.run"
 
-# Nhắc vận hành
 log "Hoàn tất cài đặt. Chạy: /root/blockassist/auto.run"
-log "Gợi ý: khởi chạy modal-login ở prod (PORT 3001) và bắc cầu 3000→3001 nếu cần."
+log "Gợi ý: chạy modal-login ở prod (PORT 3001) và bắc cầu 3000→3001 bằng socat nếu run.py trỏ 3000."
