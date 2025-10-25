@@ -1,265 +1,268 @@
 #!/bin/bash
+# install-blockassist.sh — cài đặt 6 bước + tự tạo /root/blockassist/auto.run
 set -euo pipefail
 
-# ========================================
-# BlockAssist Auto Runner - PROXY VERSION
-# ========================================
-# - Sử dụng HTTP Proxy thay vì OVPN
-# - 30 proxy cho 150 ví, xoay vòng tự động
-# - Nếu proxy lỗi, tự động thử proxy kế tiếp, tối đa 3 lần
-# ========================================
+# ==== Màu + logging ====
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+LOG_DIR="/root/blockassist"; LOG_FILE="$LOG_DIR/install.log"
+mkdir -p "$LOG_DIR"
+log(){ echo -e "$(date '+%F %T') ${GREEN}[INFO]${NC} $*" | tee -a "$LOG_FILE"; }
+warn(){ echo -e "$(date '+%F %T') ${YELLOW}[WARN]${NC} $*" | tee -a "$LOG_FILE"; }
+err(){ echo -e "$(date '+%F %T') ${RED}[ERROR]${NC} $*" | tee -a "$LOG_FILE"; }
 
-# ====== Màu sắc ======
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+log "Bắt đầu cài đặt blockassist (Debian)…"
 
-print_info()   { echo -e "${GREEN}[INFO]${NC} ${1-}"; }
-print_error()  { echo -e "${RED}[ERROR]${NC} ${1-}"; }
-print_warning(){ echo -e "${YELLOW}[WARNING]${NC} ${1-}" >&2; }
-
-# ====== Đường dẫn chính ======
-TOKEN_FILE="/home/xtr01/gensyn/huggingface.token"
-PROXY_LIST_FILE="/home/xtr01/gensyn/proxy.list"
-BLOCKASSIST_DIR="/root/blockassist"
-DEST_DIR="/root/blockassist/modal-login"
-LOG_FILE="/root/blockassist/LOG.log"
-
-# Debug xác nhận đường dẫn
-echo "[DEBUG] TOKEN_FILE=$TOKEN_FILE"
-echo "[DEBUG] PROXY_LIST_FILE=$PROXY_LIST_FILE"
-echo "[DEBUG] BLOCKASSIST_DIR=$BLOCKASSIST_DIR"
-
-# ====== Cấu hình pool proxy ======
-PROXY_POOL_SIZE=30
-MAX_PROXY_TRIES=3
-
-# ===================== HÀM XỬ LÝ PROXY =====================
-
-# Load proxy entry cho 1 slot (1..PROXY_POOL_SIZE)
-load_proxy_for_index() {
-  local idx="$1"
-  local line=""
-  if [[ ! -f "$PROXY_LIST_FILE" ]]; then
-    return 1
-  fi
-
-  # Ưu tiên dạng "INDEX,<proxy>"
-  line="$(awk -F',' -v i=\"$idx\" '$0 !~ /^#/ && NF>=2 {gsub(/^[ \t]+|[ \t]+$/,"",$1); if($1==i){print $0; exit}}' \"$PROXY_LIST_FILE\")"
-  if [[ -z "$line" ]]; then
-    # fallback: lấy dòng thứ idx (bỏ comment)
-    line="$(awk -v n=$idx 'BEGIN{c=0} $0 !~ /^#/ {c++; if(c==n){print $0; exit}}' \"$PROXY_LIST_FILE\")"
-  fi
-  [[ -z "$line" ]] && return 1
-
-  # Nếu có dấu phẩy thì lấy phần sau
-  if [[ "$line" == *","* ]]; then
-    line="$(echo "$line" | cut -d',' -f2- | sed 's/^[ \t]*//; s/[ \t]*$//')"
-  fi
-
-  # Chuẩn hóa dạng http://user:pass@ip:port
-  local proxy_url="$line"
-  if [[ "$line" != http://* && "$line" != https://* ]]; then
-    IFS=':' read -r ip port user pass <<< "$line" || true
-    if [[ -n "${ip:-}" && -n "${port:-}" && -n "${user:-}" && -n "${pass:-}" ]]; then
-      proxy_url="http://$user:$pass@$ip:$port"
-    fi
-  fi
-
-  echo "$proxy_url"
-  return 0
-}
-
-# Thiết lập proxy cho ví tương ứng (xoay vòng + retry)
-setup_proxy() {
-  local idx="$1"
-  CURRENT_PROXY=""
-  CURRENT_IP="unknown"
-
-  local pool_size="$PROXY_POOL_SIZE"
-  local start_slot=$(( ((idx - 1) % pool_size) + 1 ))
-  local tried=0
-  local attempts=0
-
-  while [[ $tried -lt $pool_size && $attempts -lt $MAX_PROXY_TRIES ]]; do
-    local slot=$(( ((start_slot - 1 + tried) % pool_size) + 1 ))
-    local proxy
-    proxy="$(load_proxy_for_index "$slot")" || proxy=""
-
-    if [[ -z "$proxy" ]]; then
-      tried=$((tried+1))
-      continue
-    fi
-
-    # Test proxy
-    local ip
-    ip="$(curl -4 -sS --max-time 10 -x "$proxy" ifconfig.me 2>/dev/null || echo unknown)"
-    if [[ "$ip" != "unknown" && -n "$ip" ]]; then
-      CURRENT_PROXY="$proxy"
-      CURRENT_IP="$ip"
-      print_info "Index $idx: dùng PROXY=$CURRENT_PROXY → PUBLIC_IP=$CURRENT_IP (slot $slot)"
-      return 0
-    else
-      print_warning "Proxy slot $slot ($proxy) lỗi → thử proxy kế tiếp (attempt $((attempts+1))/$MAX_PROXY_TRIES)"
-      tried=$((tried+1))
-      attempts=$((attempts+1))
-      sleep 1
-      continue
-    fi
-  done
-
-  # fallback direct
-  CURRENT_PROXY=""
-  CURRENT_IP="$(curl -4 -sS --max-time 12 --retry 2 ifconfig.me 2>/dev/null || echo unknown)"
-  print_warning "Index $idx: hết proxy sau $attempts lần thử → dùng direct IP=$CURRENT_IP"
-  return 0
-}
-
-# ===================== CHUẨN BỊ TOKEN & ENV =====================
-if [[ ! -f "$TOKEN_FILE" ]]; then
-  print_error "Không tìm thấy file TOKEN_FILE: $TOKEN_FILE"
-  exit 1
+# ==================== BƯỚC 1: REPO ====================
+log "Bước 1: Kiểm tra/clone repository blockassist…"
+cd ~
+if [ -d blockassist ]; then
+  warn "Thư mục blockassist đã tồn tại → dùng lại"
+  cd blockassist
+else
+  git clone https://github.com/hiepntnaa/blockassist
+  cd blockassist
 fi
+[ -d data-train ] && cp -r data-train data || true
 
-TOKENS="$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE" || true)"
-NUM_LINES="$(echo "$TOKENS" | wc -l || echo 0)"
-if [[ "${NUM_LINES:-0}" -le 0 ]]; then
-  print_error "TOKEN_FILE không có token hợp lệ."
-  exit 1
-fi
-
-# Đảm bảo 'expect' có sẵn
-if ! command -v expect >/dev/null 2>&1; then
-  print_warning "Thiếu gói 'expect' → cài đặt..."
-  apt-get update -y && apt-get install -y expect
-fi
-
-# ===================== CHỌN INDEX BẮT ĐẦU =====================
-print_warning "Nhập số thứ tự bắt đầu (1-$NUM_LINES) [mặc định: 1 sau 5s]:"
-START_INDEX=""
-if read -t 5 START_INDEX; then
-  if [[ ! "$START_INDEX" =~ ^[0-9]+$ ]] || [ "$START_INDEX" -lt 1 ] || [ "$START_INDEX" -gt "$NUM_LINES" ]; then
-    print_warning "Giá trị không hợp lệ. Bắt đầu từ 1."
-    START_INDEX=1
+# ==================== BƯỚC 2: PYENV ====================
+log "Bước 2: Kiểm tra pyenv…"
+if command -v pyenv &>/dev/null; then
+  warn "pyenv đã có: $(pyenv --version)"
+else
+  if [ -d "$HOME/.pyenv" ]; then
+    warn ".pyenv đã tồn tại"
   else
-    print_info "Bắt đầu từ ví số $START_INDEX"
+    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+  fi
+  if ! grep -q "# pyenv configuration" ~/.bashrc; then
+    tee -a ~/.bashrc >/dev/null <<'EOF'
+
+# pyenv configuration
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+EOF
+  fi
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init --path)"; eval "$(pyenv init -)"
+  log "Cài pyenv xong."
+fi
+
+# ==================== BƯỚC 3: PYTHON 3.10 ====================
+log "Bước 3: Kiểm tra Python 3.10…"
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)" 2>/dev/null || true
+eval "$(pyenv init -)" 2>/dev/null || true
+if pyenv versions | grep -q "3.10"; then
+  warn "Python 3.10 đã cài"; pyenv global 3.10
+else
+  pyenv install 3.10
+  pyenv global 3.10
+fi
+log "Python hiện tại: $(python --version 2>&1)"
+
+# ==================== BƯỚC 4: setup.sh ====================
+log "Bước 4: Chạy setup.sh nếu có…"
+if [ -f "setup.sh" ]; then
+  chmod +x setup.sh || true
+  ./setup.sh
+else
+  warn "Không có setup.sh → bỏ qua"
+fi
+
+# ==================== BƯỚC 5: THƯ VIỆN PYTHON ====================
+log "Bước 5: Cài thư viện Python…"
+python -m pip install -U pip >/dev/null
+python - <<'PY' 2>/dev/null || true
+import sys, subprocess
+def ensure(p):
+    try: __import__(p.split('==')[0])
+    except: subprocess.check_call([sys.executable,'-m','pip','install',p])
+for pkg in ['psutil','readchar','pysocks','huggingface_hub','requests[socks]']:
+    ensure(pkg)
+print("Libs OK")
+PY
+log "Libs OK"
+
+# Hiển thị & test proxy (nếu có)
+USER_NAME="$(logname 2>/dev/null || echo xtr01)"
+PROXY_LIST="/home/$USER_NAME/gensyn/proxy.list"
+if [ -f "$PROXY_LIST" ]; then
+  log "Phát hiện proxy.list tại: $PROXY_LIST (top 3):"
+  head -n 3 "$PROXY_LIST" | sed 's/^/  - /' | tee -a "$LOG_FILE"
+  FIRST_PROXY="$(grep -vE '^\s*#|^\s*$' "$PROXY_LIST" | head -n1 || true)"
+  if [ -n "$FIRST_PROXY" ]; then
+    IFS=':' read -r ip port user pass <<<"$FIRST_PROXY"
+    PROXY_URL="socks5h://$user:$pass@$ip:$port"
+    TEST_IP="$(curl -sS --max-time 8 --socks5-hostname "$PROXY_URL" https://ifconfig.me/ip || true)"
+    if [ -n "$TEST_IP" ]; then
+      log "Proxy test OK → OUT IP: $TEST_IP (qua $ip:$port)"
+    else
+      warn "Proxy test FAIL (không lấy được IP)."
+    fi
+  else
+    warn "proxy.list không có dòng hợp lệ."
   fi
 else
-  print_warning "Không nhập, mặc định bắt đầu từ 1"
-  START_INDEX=1
+  warn "Không tìm thấy $PROXY_LIST → upload HF sẽ bị bỏ qua để tránh lộ IP."
 fi
 
-# ===================== CÁC HÀM PHỤ TRỢ =====================
-copy_training_data() {
-  local i="$1"
-  local SRC="/home/xtr01/gensyn/$i/temp-data"
-  if [[ ! -d "$SRC" ]]; then
-    print_error "Không có thư mục dữ liệu nguồn: $SRC"
-    return 1
-  fi
-  rm -rf "$DEST_DIR/temp-data"
-  mkdir -p "$DEST_DIR"
-  cp -r "$SRC/" "$DEST_DIR/"
+# ==================== BƯỚC 6: TẠO /root/blockassist/auto.run ====================
+log "Bước 6: Tạo /root/blockassist/auto.run (train/tx = IP gốc; upload HF = qua proxy)…"
+mkdir -p /root/blockassist
+[ -f /root/blockassist/auto.run ] && warn "Ghi đè /root/blockassist/auto.run"
+tee /root/blockassist/auto.run >/dev/null <<'AUTORUN_EOF'
+#!/bin/bash
+set -euo pipefail
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+print_info(){ echo -e "${GREEN}[INFO]${NC} $1"; }
+print_warn(){ echo -e "${YELLOW}[WARN]${NC} $1"; }
+print_err(){ echo -e "${RED}[ERROR]${NC} $1"; }
+
+USER_NAME="$(logname 2>/dev/null || echo xtr01)"
+TOKEN_FILE="/home/$USER_NAME/gensyn/huggingface.token"
+PROXY_FILE="/home/$USER_NAME/gensyn/proxy.list"   # ip:port:user:pass
+BLOCKASSIST_DIR="/root/blockassist"
+DEST_DIR="/root/blockassist/modal-login"
+LOG_FILE="$BLOCKASSIST_DIR/LOG.log"
+
+command -v expect >/dev/null || (apt-get update && apt-get install -y expect)
+
+# Quan trọng: train/tx không dùng proxy
+unset ALL_PROXY all_proxy HTTPS_PROXY https_proxy HTTP_PROXY http_proxy NO_PROXY no_proxy || true
+
+# Token
+[ -f "$TOKEN_FILE" ] || { print_err "Thiếu token: $TOKEN_FILE"; exit 1; }
+TOKENS="$(grep -vE '^\s*#|^\s*$' "$TOKEN_FILE" || true)"
+NUM_LINES="$(echo "$TOKENS" | wc -l)"
+[ "$NUM_LINES" -gt 0 ] || { print_err "File token rỗng"; exit 1; }
+
+# Hỏi vị trí bắt đầu
+print_warn "Nhập số bắt đầu (1-$NUM_LINES) [mặc định 1 sau 5s]:"
+START_INDEX=""
+if read -t 5 START_INDEX; then
+  [[ "$START_INDEX" =~ ^[0-9]+$ ]] && [ "$START_INDEX" -ge 1 ] && [ "$START_INDEX" -le "$NUM_LINES" ] || START_INDEX=1
+else
+  START_INDEX=1
+fi
+print_info "Bắt đầu từ: $START_INDEX"
+
+# Utils proxy
+build_url(){ IFS=':' read -r ip port user pass <<< "$1"; printf 'socks5h://%s:%s@%s:%s' "$user" "$pass" "$ip" "$port"; }
+probe_ip(){ local url; url="$(build_url "$1")"; curl --socks5-hostname "$url" -sS --max-time 8 https://ifconfig.me/ip || true; }
+with_proxy(){ local url; url="$(build_url "$1")"; shift; ALL_PROXY="$url" all_proxy="$url" "$@"; }
+
+copy_data(){
+  local i="$1" src="/home/$USER_NAME/gensyn/${i}/temp-data"
+  [ -d "$src" ] || { print_err "Thiếu thư mục: $src"; return 1; }
+  rm -rf "$DEST_DIR/temp-data"; mkdir -p "$DEST_DIR"; cp -r "$src"/ "$DEST_DIR/"
 }
 
-run_training() {
-  local i="$1"
-  local TOKEN
-  TOKEN="$(sed -n "${i}p" "$TOKEN_FILE" | sed 's/^[ \t]*//; s/[ \t]*$//')"
-  if [[ -z "$TOKEN" || "$TOKEN" =~ ^# ]]; then
-    print_error "Token dòng $i không hợp lệ."
-    return 1
-  fi
-
-  local EXPECT_SCRIPT
-  EXPECT_SCRIPT="$(mktemp)"
-  cat >"$EXPECT_SCRIPT" <<'EXP'
+train_one(){
+  local i="$1" tok exp rc
+  tok="$(echo "$TOKENS" | sed -n "${i}p")"
+  [ -n "$tok" ] || { print_err "Token trống dòng $i"; return 1; }
+  cd "$BLOCKASSIST_DIR"
+  exp="$(mktemp)"
+  tee "$exp" >/dev/null <<EOF
 #!/usr/bin/expect -f
 set timeout -1
 spawn python run.py
 expect {
-  -re "(?i)token" {
-    send -- "$env(HF_TOKEN)\r"
-    exp_continue
-  }
-  "Too many requests" {
-    sleep 180
-    exp_continue
-  }
+  "*token*"        { send "$tok\r"; exp_continue }
+  "*Token*"        { send "$tok\r"; exp_continue }
+  "*huggingface*"  { send "$tok\r"; exp_continue }
+  "*HuggingFace*"  { send "$tok\r"; exp_continue }
   eof
 }
-EXP
-  chmod +x "$EXPECT_SCRIPT"
-
-  (
-    export HF_TOKEN="$TOKEN"
-
-    if [[ -n "${CURRENT_PROXY:-}" ]]; then
-      export HTTP_PROXY="$CURRENT_PROXY"
-      export HTTPS_PROXY="$CURRENT_PROXY"
-      export ALL_PROXY="$CURRENT_PROXY"
-      export http_proxy="$CURRENT_PROXY"
-      export https_proxy="$CURRENT_PROXY"
-      export all_proxy="$CURRENT_PROXY"
-      git config --global http.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
-      git config --global https.proxy "$CURRENT_PROXY" >/dev/null 2>&1 || true
-    else
-      unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy || true
-      git config --global --unset http.proxy >/dev/null 2>&1 || true
-      git config --global --unset https.proxy >/dev/null 2>&1 || true
-    fi
-
-    local UPLOAD_VIA_IP
-    if [[ -n "${CURRENT_PROXY:-}" ]]; then
-      UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 -x "$CURRENT_PROXY" ifconfig.me 2>/dev/null || echo unknown)"
-    else
-      UPLOAD_VIA_IP="$(curl -4 -sS --max-time 12 --retry 2 ifconfig.me 2>/dev/null || echo unknown)"
-    fi
-
-    echo "RUN[i=$i] $(date -Is) USING_PROXY=${CURRENT_PROXY:-none} PUBLIC_IP=$UPLOAD_VIA_IP" | tee -a "$LOG_FILE"
-
-    cd "$BLOCKASSIST_DIR"
-    "$EXPECT_SCRIPT" 2>&1 | tee -a "$LOG_FILE"
-    RC=${PIPESTATUS[0]}
-
-    echo "END[i=$i] $(date -Is) USING_PROXY=${CURRENT_PROXY:-none} PUBLIC_IP=$UPLOAD_VIA_IP rc=$RC" | tee -a "$LOG_FILE"
-    exit $RC
-  )
-  local rc=$?
-  rm -f "$EXPECT_SCRIPT"
-
-  if [[ $rc -ne 0 ]]; then
-    print_error "Training lỗi (rc=$rc)"
-    return $rc
-  fi
-  print_info "Hoàn tất training cho ví $i"
+EOF
+  chmod +x "$exp"
+  print_info "Training (IP gốc) profile=$i"
+  {
+    echo "----- $(date) -----"; echo "Profile: $i"
+    set +e; "$exp" 2>&1; rc=$?; set -e
+    echo "=== Training rc=$rc at $(date) ==="
+  } | tee -a "$LOG_FILE"
+  rm -f "$exp"
 }
 
-# ===================== VÒNG XỬ LÝ =====================
-process_range() {
-  local start="$1"
-  local end="$2"
-  for i in $(seq "$start" "$end"); do
-    print_info "========== Xử lý ví $i =========="
-    setup_proxy "$i"
-    copy_training_data "$i" || continue
-    run_training "$i" || continue
-    local SLEEP=$((RANDOM % 21 + 20))
-    echo "Sleep $SLEEP giây..." | tee -a "$LOG_FILE"
-    sleep $SLEEP
+upload_hf(){
+  local i="$1" raw="$2" ip="$3" SRC="$DEST_DIR/temp-data" tok tmp rc
+  tok="$(echo "$TOKENS" | sed -n "${i}p")"
+  [ -n "$tok" ] || { print_err "TOKEN trống i=$i"; return 1; }
+  [ -d "$SRC" ] || { print_warn "Không có dữ liệu upload: $SRC"; return 0; }
+
+  tmp="$(mktemp --suffix .py)"
+  tee "$tmp" >/dev/null <<'PY'
+import os, sys, time
+from huggingface_hub import HfApi, upload_folder
+tok=os.environ.get("HF_TOKEN_INLINE","").strip()
+if not tok: print("[HF-UP] thiếu token", file=sys.stderr) or sys.exit(1)
+api=HfApi(token=tok)
+try:
+  who=api.whoami(); user=who.get("name") or who.get("username") or "anon"
+except Exception as e:
+  print("[HF-UP] whoami fail:",e, file=sys.stderr); sys.exit(2)
+src=os.environ.get("HF_SRC_DIR")
+if not src or not os.path.isdir(src):
+  print("[HF-UP] invalid SRC",src, file=sys.stderr); sys.exit(3)
+repo=f"{user}/gensyn-profile-{os.environ.get('HF_PROFILE_INDEX','0')}-{int(time.time())}"
+try:
+  api.create_repo(repo, exist_ok=True, private=False)
+  upload_folder(repo_id=repo, folder_path=src, token=tok)
+  print(f"[HF-UP] OK repo={repo}")
+except Exception as e:
+  print("[HF-UP] Upload fail:",e, file=sys.stderr); sys.exit(4)
+PY
+
+  print_info "Upload HF qua proxy=$raw OUT_IP=$ip (profile=$i)"
+  with_proxy "$raw" -- HF_TOKEN_INLINE="$tok" HF_SRC_DIR="$SRC" HF_PROFILE_INDEX="$i" \
+    python "$tmp" 2>&1 | tee -a "$LOG_FILE"
+  rc=${PIPESTATUS[0]}
+  rm -f "$tmp"
+  return "$rc"
+}
+
+process_range(){
+  local s="$1" e="$2" arr=() idx ip raw
+  if [ -f "$PROXY_FILE" ]; then
+    mapfile -t arr < <(grep -vE '^\s*#|^\s*$' "$PROXY_FILE")
+  fi
+  local N=${#arr[@]}
+  [ "$N" -gt 0 ] || print_warn "Không có proxy → sẽ bỏ qua upload HF"
+
+  for i in $(seq "$s" "$e"); do
+    print_info "=== Profile $i ==="
+    copy_data "$i" || { print_err "Copy lỗi i=$i"; continue; }
+    train_one "$i" || { print_err "Training lỗi i=$i"; continue; }
+
+    if [ "$N" -gt 0 ]; then
+      idx=$(( (i - 1) % N )); raw="${arr[$idx]}"; ip="$(probe_ip "$raw")"
+      if [ -n "$ip" ]; then
+        if upload_hf "$i" "$raw" "$ip"; then
+          echo "[HF-UPLOAD-OK] i=$i proxy=${raw} ip=${ip}" | tee -a "$LOG_FILE"
+        else
+          print_warn "Upload HF lỗi (i=$i) qua proxy=${raw} ip=${ip}"
+        fi
+      else
+        print_warn "Proxy không khả dụng (i=$i): ${raw} → bỏ qua upload"
+      fi
+    fi
+    sl=$((RANDOM % 21 + 20)); echo "Sleep ${sl}s" | tee -a "$LOG_FILE"; sleep "$sl"
   done
 }
 
-# ===================== MAIN =====================
-mkdir -p "$(dirname "$LOG_FILE")"
-echo "=== Auto training bắt đầu lúc $(date) | Start index: $START_INDEX ===" | tee -a "$LOG_FILE"
+echo "Auto training (NO proxy for train/tx) start $(date) | Start index: $START_INDEX" | tee -a "$LOG_FILE"
+if [ "$START_INDEX" -le "$NUM_LINES" ]; then print_info "Chạy $START_INDEX → $NUM_LINES"; process_range "$START_INDEX" "$NUM_LINES"; fi
+if [ "$START_INDEX" -gt 1 ]; then print_info "Quay 1 → $((START_INDEX-1))"; process_range 1 "$((START_INDEX-1))"; fi
+print_info "Hoàn tất! Xem log: tail -f $LOG_FILE"
+AUTORUN_EOF
+chmod +x /root/blockassist/auto.run
+log "ĐÃ TẠO: /root/blockassist/auto.run"
 
-if [[ "$START_INDEX" -le "$NUM_LINES" ]]; then
-  process_range "$START_INDEX" "$NUM_LINES"
-fi
-if [[ "$START_INDEX" -gt 1 ]]; then
-  process_range 1 "$((START_INDEX - 1))"
-fi
-
-print_info "Tất cả hoàn tất."
+# Nhắc vận hành
+log "Hoàn tất cài đặt. Chạy: /root/blockassist/auto.run"
+log "Gợi ý: khởi chạy modal-login ở prod (PORT 3001) và bắc cầu 3000→3001 nếu cần."
