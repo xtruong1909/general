@@ -12,12 +12,14 @@ mkdir -p "$USER_HOME/gensyn/run"
 cat << 'EOF' > /etc/systemd/system/rl-swarm.service
 [Unit]
 Description=RL Swarm Service
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=/root/rl-swarm
-ExecStart=/bin/bash -c 'source /root/rl-swarm/.venv/bin/activate && ./run_first.sh'
+# Đổi ./run_first.sh thành script phù hợp nếu bạn muốn
+ExecStart=/bin/bash -lc 'source /root/rl-swarm/.venv/bin/activate && ./run_rl_swarm.sh'
 Restart=always
 RestartSec=5
 User=root
@@ -52,57 +54,44 @@ EOF
 cat << 'AUTORUN_EOF' > "$USER_HOME/gensyn/run/auto.run"
 #!/bin/bash
 
-# Thu muc chua du lieu goc
 BASE_DIR="$USER_HOME/gensyn/run"
-
-# Thu muc dich cua rl-swarm
 TARGET_DIR="/root/rl-swarm"
-
-# Thu muc con de copy temp-data
 LOGIN_SUBDIR="modal-login"
-
-# File chua danh sach bootnodes
 BOOTNODES_FILE="$BASE_DIR/bootnodes.txt"
-
-# File config YAML can sua
-CONFIG_FILE="$TARGET_DIR/rgym_exp/config/rg-swarm.yaml"
+CONFIG_FILE="$TARGET_DIR/code_gen_exp/src/manager.py"
+STATE_FILE="$BASE_DIR/.current_index"
 
 # Tu dong tim so folder lon nhat
 MAX_FOLDER=$(find "$BASE_DIR" -maxdepth 1 -type d -name '[0-9]*' -printf '%f\n' | sort -n | tail -1)
-MAX_FOLDER=${MAX_FOLDER:-1}  # Mac dinh la 1 neu khong tim thay
-echo "$(date) - Phat hien co $MAX_FOLDER folder, se lap tu 1 den $MAX_FOLDER"
+MAX_FOLDER=${MAX_FOLDER:-1}
+
+echo "Co $MAX_FOLDER folder"
 
 # Ham chon ngau nhien mot bootnode va cap nhat vao config
 update_bootnode() {
-    # Kiem tra file bootnodes co ton tai khong
     if [ ! -f "$BOOTNODES_FILE" ]; then
-        echo "$(date) - CANH BAO: Khong tim thay file $BOOTNODES_FILE - giu nguyen gia tri cu"
+        echo "K tim thay file $BOOTNODES_FILE, dung bootnode cu"
         return
     fi
-    
-    # Kiem tra file co rong khong
+
     if [ ! -s "$BOOTNODES_FILE" ]; then
-        echo "$(date) - CANH BAO: File bootnode rong, dung bootnode cu"
+        echo "File bootnode rong, dung bootnode cu"
         return
     fi
-    
-    # Lay ngau nhien mot dong tu file bootnodes.txt (bo qua dong trong)
+
     RANDOM_BOOTNODE=$(grep -v '^[[:space:]]*$' "$BOOTNODES_FILE" | shuf -n 1)
-    
     if [ -z "$RANDOM_BOOTNODE" ]; then
-        echo "$(date) - CANH BAO: Khong lay duoc bootnode, dung bootnode cu"
+        echo "K lay duoc bootnode, dung bootnode cu"
         return
     fi
-    
-    # Backup file config truoc khi sua
+
     cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
     
-    # Lay bootnode cu truoc khi thay the
-    OLD_BOOTNODE=$(grep -E "^[[:space:]]*-[[:space:]]*'/ip4" "$CONFIG_FILE" | head -1 | sed "s/^[[:space:]]*-[[:space:]]*//")
+    # Tim dong bootnode trong Python (format: "/ip4/...")
+    OLD_BOOTNODE=$(grep -oP '"/ip4/[^"]+' "$CONFIG_FILE" | head -1 | tr -d '"')
     
-    # Tim va thay the dong initial_peers bang bootnode moi
-    # Su dung sed de tim dong bat dau bang - '/ip4 va thay the
-    sed -i "/^[[:space:]]*-[[:space:]]*'\/ip4/c\    - '$RANDOM_BOOTNODE'" "$CONFIG_FILE"
+    # Thay bootnode moi - tim va thay the trong Python list
+    sed -i "s|\"$OLD_BOOTNODE\"|\"$RANDOM_BOOTNODE\"|g" "$CONFIG_FILE"
 }
 
 # Ham copy file va restart
@@ -110,60 +99,51 @@ copy_and_restart() {
     local idx="$1"
     PEM_SOURCE="$BASE_DIR/$idx/swarm.pem"
     TEMP_SOURCE="$BASE_DIR/$idx/temp-data"
-    
-    # Kiem tra file ton tai truoc khi copy
+
     if [ ! -f "$PEM_SOURCE" ]; then
-        echo "$(date) - LOI: Khong tim thay $PEM_SOURCE"
+        echo "K tim thay $PEM_SOURCE"
         return 1
     fi
-    
     if [ ! -d "$TEMP_SOURCE" ]; then
-        echo "$(date) - LOI: Khong tim thay $TEMP_SOURCE"
+        echo "K tim thay $TEMP_SOURCE"
         return 1
     fi
-    
+
     systemctl stop rl-swarm
-    
-    # Doi service thuc su dung lai
+
     local count=0
     while systemctl is-active --quiet rl-swarm && [ $count -lt 30 ]; do
         sleep 1
         ((count++))
     done
-    
+
     pkill -f "yarn start" 2>/dev/null || true
     pkill -f "node.*modal-login" 2>/dev/null || true
     sleep 3
-    
+
     rm -f "$TARGET_DIR/swarm.pem"
     cp -f "$PEM_SOURCE" "$TARGET_DIR/"
-    
     rm -rf "$TARGET_DIR/$LOGIN_SUBDIR/temp-data"
     cp -r "$TEMP_SOURCE" "$TARGET_DIR/$LOGIN_SUBDIR/"
-    
-    # Cap nhat bootnode ngau nhien truoc khi start
+
     update_bootnode
-    
     systemctl start rl-swarm
-    
-    # Cho userData.json xuat hien
+
     local timeout=60
     local elapsed=0
     while [ ! -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json" ] && [ $elapsed -lt $timeout ]; do
         sleep 5
         ((elapsed+=5))
     done
-    
+
     if [ ! -f "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json" ]; then
-        echo "$(date) - CANH BAO: userData.json khong xuat hien sau $timeout giay"
+        echo "userData.json khong xuat hien sau $timeout giay"
         return 1
     fi
-    
-    # Lay ORG_ID
+
     ORG_ID=$(awk 'BEGIN { FS = "\"" } !/^[ \t]*[{}]/ { print $(NF - 1); exit }' \
         "$TARGET_DIR/$LOGIN_SUBDIR/temp-data/userData.json")
-    
-    # Cho API key kich hoat (timeout 5 phut)
+
     local api_timeout=300
     local api_elapsed=0
     while [ $api_elapsed -lt $api_timeout ]; do
@@ -175,54 +155,87 @@ copy_and_restart() {
             ((api_elapsed+=5))
         fi
     done
-    
+
     if [ $api_elapsed -ge $api_timeout ]; then
-        echo "$(date) - CANH BAO: API key khong kich hoat sau $api_timeout giay"
+        echo "API key khong kich hoat sau $api_timeout giay"
     fi
 }
 
-# Lan dau dung folder 1
-echo "$(date) - Folder 1"
-copy_and_restart 1
+# Doc CURRENT_INDEX tu file (neu co), neu khong co thi bat dau tu 1
+if [ -f "$STATE_FILE" ]; then
+    CURRENT_INDEX=$(cat "$STATE_FILE")
+    # Validate la so
+    if ! [[ "$CURRENT_INDEX" =~ ^[0-9]+$ ]]; then
+        CURRENT_INDEX=1
+    fi
+    # Dam bao khong vuot qua MAX_FOLDER
+    if (( CURRENT_INDEX > MAX_FOLDER )); then
+        CURRENT_INDEX=1
+    fi
+else
+    CURRENT_INDEX=1
+fi
 
-# Bat dau vong lap tu folder 2
-CURRENT_INDEX=2
+echo "Bat dau tu Folder $CURRENT_INDEX"
+copy_and_restart "$CURRENT_INDEX"
 
-# Thoi gian cho toi da (10 phut)
+# Luu index tiep theo vao file
+NEXT_INDEX=$((CURRENT_INDEX + 1))
+if (( NEXT_INDEX > MAX_FOLDER )); then
+    NEXT_INDEX=1
+fi
+echo "$NEXT_INDEX" > "$STATE_FILE"
+
+CURRENT_INDEX=$NEXT_INDEX
+
+# Thoi gian cho toi da
 TIMEOUT_SECONDS=600
 last_detect_time=$(date +%s)
 
 while true; do
     LOG_LAST_30S=$(journalctl -u rl-swarm --since "30 seconds ago" -o cat 2>/dev/null || echo "")
     current_time=$(date +%s)
-    
-    if echo "$LOG_LAST_30S" | grep -q "Joining round"; then
+
+    if echo "$LOG_LAST_30S" | grep -Eq "submission completed|Already finished"; then
         last_detect_time=$current_time
-        
-        # Reset index neu vuot qua MAX_FOLDER truoc khi dung
+
         if (( CURRENT_INDEX > MAX_FOLDER )); then
             CURRENT_INDEX=1
         fi
-        
-        echo "$(date): Folder $CURRENT_INDEX - $RANDOM_BOOTNODE"
+
+        echo "Folder $CURRENT_INDEX | $RANDOM_BOOTNODE"
         copy_and_restart "$CURRENT_INDEX"
-        ((CURRENT_INDEX++))
+        
+        # Luu index tiep theo
+        NEXT_INDEX=$((CURRENT_INDEX + 1))
+        if (( NEXT_INDEX > MAX_FOLDER )); then
+            NEXT_INDEX=1
+        fi
+        echo "$NEXT_INDEX" > "$STATE_FILE"
+        
+        CURRENT_INDEX=$NEXT_INDEX
     else
-        # Neu qua thoi gian khong phat hien Joining round thi chuyen index tiep
         if (( current_time - last_detect_time >= TIMEOUT_SECONDS )); then
-            echo "$(date) - Error, chuyen folder $CURRENT_INDEX - $RANDOM_BOOTNODE"
-            
-            # Reset index neu vuot qua MAX_FOLDER truoc khi dung
+            echo "Error, chuyen folder $CURRENT_INDEX - $RANDOM_BOOTNODE"
+
             if (( CURRENT_INDEX > MAX_FOLDER )); then
                 CURRENT_INDEX=1
             fi
-            
+
             copy_and_restart "$CURRENT_INDEX"
-            ((CURRENT_INDEX++))
+            
+            # Luu index tiep theo
+            NEXT_INDEX=$((CURRENT_INDEX + 1))
+            if (( NEXT_INDEX > MAX_FOLDER )); then
+                NEXT_INDEX=1
+            fi
+            echo "$NEXT_INDEX" > "$STATE_FILE"
+            
+            CURRENT_INDEX=$NEXT_INDEX
             last_detect_time=$current_time
         fi
     fi
-    
+
     sleep 20
 done
 AUTORUN_EOF
@@ -235,31 +248,6 @@ chmod +x "$USER_HOME/gensyn/run/auto.run"
 
 # Reload systemd
 systemctl daemon-reload
-
-# Cau hinh crontab cho root
-CRON_CMD="0 2,5,8,11,14,17,20,23 * * * systemctl restart rl-swarm2"
-CRON_COMMENT="# Auto restart rl-swarm2 every 3 hours"
-
-# Lay crontab hien tai cua root
-CURRENT_CRON=$(crontab -l 2>/dev/null)
-
-# Kiem tra xem cron job da ton tai chua
-if echo "$CURRENT_CRON" | grep -qF "systemctl restart rl-swarm2"; then
-    # Xoa dong cu va them lai
-    UPDATED_CRON=$(echo "$CURRENT_CRON" | grep -vF "systemctl restart rl-swarm2" | grep -vF "Auto restart rl-swarm2")
-    if [ -z "$UPDATED_CRON" ]; then
-        (echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    else
-        (echo "$UPDATED_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    fi
-else
-    if [ -z "$CURRENT_CRON" ]; then
-        (echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    else
-        (echo "$CURRENT_CRON"; echo ""; echo "$CRON_COMMENT"; echo "$CRON_CMD") | crontab -
-    fi
-fi
-
 
 echo "BAT DAU CAI DAT CAC PACKAGE CAN THIET"
 
@@ -348,7 +336,7 @@ if [ -d "$RL_SWARM_DIR" ]; then
 else
     echo "Thu muc rl-swarm chua ton tai, dang clone..."
     cd /root
-    git clone https://github.com/hiepntnaa/rl-swarm/
+    git clone https://github.com/biib6688/rl-swarm/
     
     if [ $? -eq 0 ]; then
         echo "Da clone thanh cong rl-swarm!"
@@ -379,7 +367,7 @@ else
         exit 1
     fi
 fi
-wget -O $USER_HOME/gensyn/run/bootnodes.txt https://raw.githubusercontent.com/hiepntnaa/general/refs/heads/main/bootnodes.txt
+
 cd $RL_SWARM_DIR && git fetch origin && git reset --hard origin/main 
 
 echo ""
